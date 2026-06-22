@@ -31,16 +31,22 @@ A lightweight desktop tool for managing multiple isolated Zotero projects, allow
 - pywin32 (Windows only)
 
 #### Steps
-```bash
+
 # Clone the repository
+```bash
 git clone https://github.com/alexonqin/ZoteroProjectLauncher.git
 cd ZoteroProjectLauncher
+```
 
 # Install dependencies
+```bash
 pip install -r requirements.txt
+```
 
 # Run the application
+```bash
 python src/main.py
+```
 
 
 ### Quick Start
@@ -134,15 +140,20 @@ alexonqin
 - pywin32 (仅 Windows)
 
 #### 安装步骤
-```bash
+
 # 克隆仓库
+```bash
 git clone https://github.com/alexonqin/ZoteroProjectLauncher.git
 cd ZoteroProjectLauncher
+```
 
 # 安装依赖
+```bash
 pip install -r requirements.txt
+```
 
 # 运行程序
+```bash
 python src/main.py
 ```
 
