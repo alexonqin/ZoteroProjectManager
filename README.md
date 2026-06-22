@@ -102,7 +102,7 @@ ZoteroProjectLauncher/
 
 ### Development Status
 
-Currently in **beta** (v1.0). Core functionality is implemented and tested.
+Currently in **beta** (v0.1). Core functionality is implemented and tested.
 
 ### License
 
@@ -210,7 +210,7 @@ ZoteroProjectLauncher/
 
 ### 开发状态
 
-当前为 **beta** 版本 (v1.0)，核心功能已实现并完成测试。
+当前为 **beta** 版本 (v0.1)，核心功能已实现并完成测试。
 
 ### 许可证
 
