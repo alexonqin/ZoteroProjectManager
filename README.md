@@ -1,4 +1,4 @@
-```markdown
+
 # Zotero Project Launcher (ZPL)
 
 [English](#english) | [中文](#chinese)
@@ -41,7 +41,7 @@ pip install -r requirements.txt
 
 # Run the application
 python src/main.py
-```
+
 
 ### Quick Start
 
