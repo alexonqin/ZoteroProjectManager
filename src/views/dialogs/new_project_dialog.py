@@ -5,7 +5,8 @@
 
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
-    QPushButton, QCheckBox, QFileDialog, QFrame, QMessageBox
+    QPushButton, QCheckBox, QFileDialog, QFrame, QMessageBox,
+    QComboBox
 )
 from PySide6.QtCore import Qt
 from pathlib import Path
@@ -16,15 +17,13 @@ from controllers.zotero_controller import ZoteroController
 
 
 class NewProjectDialog(QDialog):
-    """新建项目对话框"""
-
     def __init__(self, i18n: I18n, config, parent=None):
         super().__init__(parent)
         self.i18n = i18n
         self.config = config
         self.controller = ZoteroController()
 
-        self.result_data = None  # (name, location, create_shortcut)
+        self.result_data = None  # (name, location, language, create_shortcut)
 
         self._setup_ui()
         self.retranslate_ui()
@@ -37,7 +36,6 @@ class NewProjectDialog(QDialog):
         layout = QVBoxLayout(self)
         layout.setSpacing(12)
 
-        # 标题
         self.title_label = QLabel()
         self.title_label.setStyleSheet("font-size: 16px; font-weight: bold;")
         layout.addWidget(self.title_label)
@@ -53,7 +51,6 @@ class NewProjectDialog(QDialog):
         self.name_label.setMinimumWidth(80)
         name_layout.addWidget(self.name_label)
         self.name_edit = QLineEdit()
-        self.name_edit.setPlaceholderText("")
         name_layout.addWidget(self.name_edit)
         layout.addLayout(name_layout)
 
@@ -72,6 +69,25 @@ class NewProjectDialog(QDialog):
         loc_layout.addWidget(self.browse_btn)
         layout.addLayout(loc_layout)
 
+        # 界面语言
+        lang_layout = QHBoxLayout()
+        self.lang_label = QLabel()
+        self.lang_label.setMinimumWidth(80)
+        lang_layout.addWidget(self.lang_label)
+        self.lang_combo = QComboBox()
+        self.lang_combo.addItem(self.i18n.tr("lang_chinese"), 'zh-CN')
+        self.lang_combo.addItem(self.i18n.tr("lang_english"), 'en-US')
+        self.lang_combo.addItem(self.i18n.tr("lang_system"), '')
+        # 设置默认值（从配置读取）
+        default_lang = self.config.default_language if hasattr(self.config, 'default_language') else 'zh-CN'
+        for idx in range(self.lang_combo.count()):
+            if self.lang_combo.itemData(idx) == default_lang:
+                self.lang_combo.setCurrentIndex(idx)
+                break
+        lang_layout.addWidget(self.lang_combo)
+        lang_layout.addStretch()
+        layout.addLayout(lang_layout)
+
         # 模板信息
         self.template_info = QLabel()
         self.template_info.setStyleSheet("color: #666; font-size: 9px; padding-left: 80px;")
@@ -89,7 +105,6 @@ class NewProjectDialog(QDialog):
 
         layout.addStretch()
 
-        # 按钮
         btn_layout = QHBoxLayout()
         btn_layout.addStretch()
         self.cancel_btn = QPushButton()
@@ -113,7 +128,6 @@ class NewProjectDialog(QDialog):
         btn_layout.addWidget(self.create_btn)
         layout.addLayout(btn_layout)
 
-        # 连接信号
         self.name_edit.textChanged.connect(self._update_preview)
 
     def retranslate_ui(self):
@@ -121,10 +135,21 @@ class NewProjectDialog(QDialog):
         self.title_label.setText(self.i18n.tr("new_project_title"))
         self.name_label.setText(self.i18n.tr("new_project_name_label"))
         self.loc_label.setText(self.i18n.tr("new_project_location_label"))
+        self.lang_label.setText(self.i18n.tr("new_project_language_label"))
         self.browse_btn.setText(self.i18n.tr("btn_browse"))
         self.shortcut_cb.setText(self.i18n.tr("new_project_create_shortcut"))
         self.create_btn.setText(self.i18n.tr("new_project_btn_create"))
         self.cancel_btn.setText(self.i18n.tr("new_project_btn_cancel"))
+
+        # 更新语言下拉列表文字
+        for idx in range(self.lang_combo.count()):
+            data = self.lang_combo.itemData(idx)
+            if data == 'zh-CN':
+                self.lang_combo.setItemText(idx, self.i18n.tr("lang_chinese"))
+            elif data == 'en-US':
+                self.lang_combo.setItemText(idx, self.i18n.tr("lang_english"))
+            elif data == '':
+                self.lang_combo.setItemText(idx, self.i18n.tr("lang_system"))
 
     def _on_browse(self):
         path = QFileDialog.getExistingDirectory(
@@ -141,18 +166,17 @@ class NewProjectDialog(QDialog):
         templates_root = self.config.templates_root
 
         if name and version and templates_root:
-            # 检查模板是否匹配
             templates = self.controller.get_templates(templates_root)
             matched = False
             for t in templates:
-                if t == "v{}".format(version) or t.startswith("v{}.".format(version.split('.')[0])):
+                if t == f"v{version}" or t.startswith(f"v{version.split('.')[0]}."):
                     matched = True
                     break
             if matched:
-                self.template_info.setText("✅ 使用模板: v{}（与 Zotero {} 匹配）".format(version, version))
+                self.template_info.setText(f"✅ 使用模板: v{version}（与 Zotero {version} 匹配）")
                 self.template_info.setStyleSheet("color: green; font-size: 9px; padding-left: 80px;")
             else:
-                self.template_info.setText("⚠️ 未找到匹配 Zotero {} 的模板".format(version))
+                self.template_info.setText(f"⚠️ 未找到匹配 Zotero {version} 的模板")
                 self.template_info.setStyleSheet("color: #cc3333; font-size: 9px; padding-left: 80px;")
         else:
             self.template_info.setText("")
@@ -160,6 +184,7 @@ class NewProjectDialog(QDialog):
     def _on_create(self):
         name = self.name_edit.text().strip()
         location = self.loc_edit.text()
+        language = self.lang_combo.currentData()
 
         if not name:
             QMessageBox.warning(self, "", "请输入项目名称")
@@ -168,17 +193,15 @@ class NewProjectDialog(QDialog):
             QMessageBox.warning(self, "", "请选择有效的存放位置")
             return
 
-        # 检查非法字符
-        illegal_chars = r'<>:"/\|?*'
-        for ch in illegal_chars:
+        illegal = r'<>:"/\|?*'
+        for ch in illegal:
             if ch in name:
-                QMessageBox.warning(self, "", "项目名称不能包含非法字符: {}".format(ch))
+                QMessageBox.warning(self, "", f"项目名称不能包含非法字符: {ch}")
                 return
 
-        # 检查是否已存在 (修正括号)
         if (Path(location) / name).exists():
-            QMessageBox.warning(self, "", "项目 '{}' 已存在".format(name))
+            QMessageBox.warning(self, "", f"项目 '{name}' 已存在")
             return
 
-        self.result_data = (name, location, self.shortcut_cb.isChecked())
+        self.result_data = (name, location, language, self.shortcut_cb.isChecked())
         self.accept()

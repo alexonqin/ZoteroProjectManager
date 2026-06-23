@@ -5,7 +5,7 @@
 
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
-    QPushButton, QFileDialog, QFrame, QMessageBox
+    QPushButton, QFileDialog, QFrame, QMessageBox, QComboBox
 )
 from PySide6.QtCore import Qt
 from pathlib import Path
@@ -17,8 +17,6 @@ from controllers.zotero_controller import ZoteroController
 
 
 class PreferencesDialog(QDialog):
-    """偏好设置对话框"""
-
     def __init__(self, i18n: I18n, config_mgr: ConfigManager, parent=None):
         super().__init__(parent)
         self.i18n = i18n
@@ -32,12 +30,11 @@ class PreferencesDialog(QDialog):
 
     def _setup_ui(self):
         self.setModal(True)
-        self.setFixedWidth(600)
+        self.setFixedWidth(620)
 
         layout = QVBoxLayout(self)
         layout.setSpacing(12)
 
-        # 标题
         self.title_label = QLabel()
         self.title_label.setStyleSheet("font-size: 16px; font-weight: bold;")
         layout.addWidget(self.title_label)
@@ -97,7 +94,7 @@ class PreferencesDialog(QDialog):
         self.template_status.setStyleSheet("font-size: 9px; padding-left: 120px;")
         layout.addWidget(self.template_status)
 
-        # ---- Profiles 目录（项目库） ----
+        # ---- Profiles 目录 ----
         profiles_label = QLabel()
         profiles_label.setMinimumWidth(120)
         profiles_layout = QHBoxLayout()
@@ -111,17 +108,32 @@ class PreferencesDialog(QDialog):
         profiles_layout.addWidget(self.profiles_browse_btn)
         layout.addLayout(profiles_layout)
 
-        # Profiles 目录说明（新增）
         self.profiles_hint = QLabel()
         self.profiles_hint.setStyleSheet("color: #666; font-size: 9px; padding-left: 120px;")
         self.profiles_hint.setWordWrap(True)
         layout.addWidget(self.profiles_hint)
 
-        # ---- 历史记录快速切换提示（新增） ----
-        self.history_hint = QLabel()
-        self.history_hint.setStyleSheet("color: #555; font-size: 9px; padding-left: 120px;")
-        self.history_hint.setWordWrap(True)
-        layout.addWidget(self.history_hint)
+        # ---- 默认语言 ----
+        lang_layout = QHBoxLayout()
+        self.default_lang_label = QLabel()
+        self.default_lang_label.setMinimumWidth(120)
+        lang_layout.addWidget(self.default_lang_label)
+        self.default_lang_combo = QComboBox()
+        self.default_lang_combo.addItem("简体中文", 'zh-CN')
+        self.default_lang_combo.addItem("English", 'en-US')
+        self.default_lang_combo.addItem("跟随系统", '')
+        lang_layout.addWidget(self.default_lang_combo)
+        lang_layout.addStretch()
+        layout.addLayout(lang_layout)
+
+        self.default_lang_hint = QLabel()
+        self.default_lang_hint.setStyleSheet("color: #888; font-size: 9px; padding-left: 120px;")
+        layout.addWidget(self.default_lang_hint)
+
+        line2 = QFrame()
+        line2.setFrameShape(QFrame.HLine)
+        line2.setFrameShadow(QFrame.Sunken)
+        layout.addWidget(line2)
 
         # 按钮
         btn_layout = QHBoxLayout()
@@ -147,37 +159,50 @@ class PreferencesDialog(QDialog):
         btn_layout.addWidget(self.save_btn)
         layout.addLayout(btn_layout)
 
-        # 存储引用供 retranslate
-        self.labels = {
-            'version': self.version_label,
-            'path': path_label,
-            'template': template_label,
-            'profiles': profiles_label,
-        }
-
     def retranslate_ui(self):
         self.setWindowTitle(self.i18n.tr("pref_title"))
         self.title_label.setText(self.i18n.tr("pref_title"))
-        self.labels['version'].setText("🔢 Zotero 版本号:")
+        self.version_label.setText("🔢 Zotero 版本号:")
         self.version_hint.setText("💡 " + self.i18n.tr("pref_version_hint"))
-        self.labels['path'].setText("📁 Zotero 安装路径:")
+        path_label = self.findChild(QLabel, "path_label")
+        if path_label:
+            path_label.setText("📁 Zotero 安装路径:")
         self.browse_btn.setText(self.i18n.tr("btn_browse"))
-        self.labels['template'].setText("📁 模板目录:")
+        template_label = self.findChild(QLabel, "template_label")
+        if template_label:
+            template_label.setText("📁 模板目录:")
         self.template_browse_btn.setText(self.i18n.tr("btn_browse"))
-        self.labels['profiles'].setText("📁 项目库（Profiles 目录）:")
-
-        # 新增的说明文字
+        profiles_label = self.findChild(QLabel, "profiles_label")
+        if profiles_label:
+            profiles_label.setText("📁 项目库（Profiles 目录）:")
         self.profiles_hint.setText("💡 " + self.i18n.tr("pref_profiles_hint"))
-        self.history_hint.setText("💡 " + self.i18n.tr("pref_history_hint"))
-
+        self.default_lang_label.setText("🌐 " + self.i18n.tr("pref_default_language"))
+        self.default_lang_hint.setText("💡 " + self.i18n.tr("pref_default_language_hint"))
         self.save_btn.setText(self.i18n.tr("pref_btn_save"))
         self.cancel_btn.setText(self.i18n.tr("pref_btn_cancel"))
+
+        # 更新语言下拉
+        for idx in range(self.default_lang_combo.count()):
+            data = self.default_lang_combo.itemData(idx)
+            if data == 'zh-CN':
+                self.default_lang_combo.setItemText(idx, self.i18n.tr("lang_chinese"))
+            elif data == 'en-US':
+                self.default_lang_combo.setItemText(idx, self.i18n.tr("lang_english"))
+            elif data == '':
+                self.default_lang_combo.setItemText(idx, self.i18n.tr("lang_system"))
 
     def _load_config(self):
         self.version_edit.setText(self.config.zotero_version)
         self.path_edit.setText(self.config.zotero_install_dir)
         self.template_edit.setText(self.config.templates_root)
         self.profiles_edit.setText(self.config.profiles_current)
+
+        default_lang = getattr(self.config, 'default_language', 'zh-CN')
+        for idx in range(self.default_lang_combo.count()):
+            if self.default_lang_combo.itemData(idx) == default_lang:
+                self.default_lang_combo.setCurrentIndex(idx)
+                break
+
         self._update_path_status()
         self._update_template_status()
 
@@ -188,7 +213,7 @@ class PreferencesDialog(QDialog):
             if exe_path.exists():
                 file_ver = self.controller.get_zotero_file_version(install_dir)
                 if file_ver:
-                    self.path_status.setText("✅ 已找到 zotero.exe（文件版本: {}）".format(file_ver))
+                    self.path_status.setText(f"✅ 已找到 zotero.exe（文件版本: {file_ver}）")
                     self.path_status.setStyleSheet("color: green; font-size: 9px; padding-left: 120px;")
                 else:
                     self.path_status.setText("✅ 已找到 zotero.exe")
@@ -205,14 +230,14 @@ class PreferencesDialog(QDialog):
                 version = self.version_edit.text().strip()
                 matched = False
                 for t in templates:
-                    if t == "v{}".format(version) or t.startswith("v{}.".format(version.split('.')[0])):
+                    if t == f"v{version}" or t.startswith(f"v{version.split('.')[0]}."):
                         matched = True
                         break
                 if matched:
                     self.template_status.setText("✅ 找到匹配的模板")
                     self.template_status.setStyleSheet("color: green; font-size: 9px; padding-left: 120px;")
                 else:
-                    self.template_status.setText("⚠️ 未找到与版本 {} 匹配的模板".format(version))
+                    self.template_status.setText(f"⚠️ 未找到与版本 {version} 匹配的模板")
                     self.template_status.setStyleSheet("color: #cc3333; font-size: 9px; padding-left: 120px;")
                 return
         self.template_status.setText("⚠️ 模板目录无效或为空")
@@ -267,6 +292,7 @@ class PreferencesDialog(QDialog):
         self.config.profiles_current = self.profiles_edit.text()
         if not self.config.profiles_default:
             self.config.profiles_default = self.config.profiles_current
+        self.config.default_language = self.default_lang_combo.currentData()
 
         self.config_mgr.save()
         self.accept()
