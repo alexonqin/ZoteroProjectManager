@@ -1,19 +1,18 @@
 # -*- coding: utf-8 -*-
 """
-主窗口
+主窗口 - 表单模式（表格展示项目），含语言列
 """
 
 import os
-import sys
 from pathlib import Path
 
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-    QPushButton, QListWidget, QListWidgetItem, QStatusBar,
-    QMessageBox, QFileDialog, QMenu, QMenuBar, QDialog,
-    QStyle
+    QPushButton, QTableWidget, QTableWidgetItem, QHeaderView,
+    QStatusBar, QMessageBox, QFileDialog, QMenu, QMenuBar,
+    QDialog, QStyle, QAbstractItemView
 )
-from PySide6.QtCore import Qt, QTimer, QSize  # 新增 QSize
+from PySide6.QtCore import Qt, QTimer, QSize
 from PySide6.QtGui import QAction, QKeySequence
 
 from models.profile import Profile
@@ -21,11 +20,18 @@ from controllers.zotero_controller import ZoteroController
 from utils.i18n import I18n
 from utils.config_manager import ConfigManager
 from utils.path_utils import is_valid_directory
-from views.widgets.project_card import ProjectCard
-from views.dialogs.new_project_dialog import NewProjectDialog
-from views.dialogs.delete_confirm_dialog import DeleteConfirmDialog
-from views.dialogs.preferences_dialog import PreferencesDialog
-from views.dialogs.first_launch_dialog import FirstLaunchDialog
+from utils.language_utils import read_language, get_display_language
+
+from views.dialogs import (
+    PreferencesDialog,
+    NewProjectDialog,
+    DeleteConfirmDialog,
+    ProjectInUseDialog,
+    DeleteSuccessDialog,
+    DeleteFailedDialog,
+    FirstLaunchDialog,
+    LanguageDialog
+)
 
 
 class MainWindow(QMainWindow):
@@ -40,7 +46,7 @@ class MainWindow(QMainWindow):
 
         self.profiles = []
         self.current_dir = ""
-        self.card_widgets = {}
+        self.selected_row = -1
 
         self._setup_ui()
         self._setup_menu()
@@ -49,7 +55,7 @@ class MainWindow(QMainWindow):
         self.retranslate_ui()
 
     def _setup_ui(self):
-        self.setMinimumSize(600, 400)
+        self.setMinimumSize(750, 400)
 
         central = QWidget()
         self.setCentralWidget(central)
@@ -107,27 +113,44 @@ class MainWindow(QMainWindow):
 
         main_layout.addLayout(dir_layout)
 
-        # 项目列表
-        self.list_widget = QListWidget()
-        self.list_widget.setSpacing(6)
-        self.list_widget.setStyleSheet("""
-            QListWidget::item {
-                background: transparent;
-                border: none;
+        # 项目表格（7列）
+        self.table = QTableWidget()
+        self.table.setColumnCount(7)
+        self.table.setHorizontalHeaderLabels([
+            "项目名称", "界面语言", "路径", "文献", "插件", "最后使用", "操作"
+        ])
+        self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
+        self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeToContents)
+        self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.Stretch)
+        self.table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeToContents)
+        self.table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeToContents)
+        self.table.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeToContents)
+        self.table.horizontalHeader().setSectionResizeMode(6, QHeaderView.ResizeToContents)
+        self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.table.setSelectionMode(QAbstractItemView.SingleSelection)
+        self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.table.setShowGrid(False)
+        self.table.setAlternatingRowColors(True)
+        self.table.setStyleSheet("""
+            QTableWidget::item:selected {
+                background-color: #e3edf7;
             }
-            QListWidget::item:selected {
-                background: transparent;
+            QTableWidget::item:hover {
+                background-color: #f0f4f8;
             }
         """)
-        main_layout.addWidget(self.list_widget)
+        self.table.itemDoubleClicked.connect(self._on_item_double_clicked)
+        self.table.itemClicked.connect(self._on_item_clicked)
+        self.table.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.table.customContextMenuRequested.connect(self._on_context_menu)
+
+        main_layout.addWidget(self.table)
 
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
 
     def _setup_menu(self):
         menubar = self.menuBar()
-
-        # 文件菜单
         self.file_menu = menubar.addMenu("")
         self.new_action = QAction("", self)
         self.new_action.setShortcut(QKeySequence("Ctrl+N"))
@@ -151,7 +174,6 @@ class MainWindow(QMainWindow):
         self.exit_action.triggered.connect(self.close)
         self.file_menu.addAction(self.exit_action)
 
-        # 编辑菜单
         self.edit_menu = menubar.addMenu("")
         self.shortcut_action = QAction("", self)
         self.shortcut_action.triggered.connect(self._on_create_shortcut)
@@ -169,7 +191,6 @@ class MainWindow(QMainWindow):
         self.pref_action.triggered.connect(self._on_preferences)
         self.edit_menu.addAction(self.pref_action)
 
-        # 帮助菜单
         self.help_menu = menubar.addMenu("")
         self.about_action = QAction("", self)
         self.about_action.triggered.connect(self._on_about)
@@ -226,76 +247,146 @@ class MainWindow(QMainWindow):
             QTimer.singleShot(0, self.close)
 
     def _refresh_projects(self):
-        self.list_widget.clear()
-        self.card_widgets.clear()
+        self.table.setRowCount(0)
+        self.profiles = []
 
         if not self.current_dir or not is_valid_directory(self.current_dir):
             self._update_status()
             return
 
         self.profiles = self.controller.get_projects(self.current_dir)
-        for profile in self.profiles:
-            item = QListWidgetItem()
-            # 修正：使用 QSize
-            item.setSizeHint(QSize(80, 80))
-            card = ProjectCard(profile)
-            card.launch_requested.connect(self._on_launch_project)
-            card.open_folder_requested.connect(self._on_open_folder_for_profile)
-            card.delete_requested.connect(self._on_delete_project_for_profile)
-            card.create_shortcut_requested.connect(self._on_create_shortcut_for_profile)
+        if not self.profiles:
+            self._update_status()
+            return
 
-            self.list_widget.addItem(item)
-            self.list_widget.setItemWidget(item, card)
-            self.card_widgets[profile.name] = card
+        self.table.setRowCount(len(self.profiles))
+        ui_lang = self.i18n.get_language()
+
+        for row, profile in enumerate(self.profiles):
+            # 1. 项目名称
+            name_item = QTableWidgetItem(profile.name)
+            name_item.setIcon(self.style().standardIcon(QStyle.SP_FileIcon))
+            name_item.setData(Qt.UserRole, profile)
+            self.table.setItem(row, 0, name_item)
+
+            # 2. 界面语言
+            lang_code = self.controller.get_project_language(profile.project_path)
+            display_lang = get_display_language(lang_code, ui_lang)
+            lang_item = QTableWidgetItem(display_lang)
+            lang_item.setToolTip(self.i18n.tr("language_column_tooltip"))
+            lang_item.setData(Qt.UserRole, profile)
+            self.table.setItem(row, 1, lang_item)
+
+            # 3. 路径
+            path_display = profile.project_path
+            if len(path_display) > 60:
+                path_display = path_display[:57] + "..."
+            path_item = QTableWidgetItem(path_display)
+            path_item.setToolTip(profile.project_path)
+            path_item.setData(Qt.UserRole, profile)
+            self.table.setItem(row, 2, path_item)
+
+            # 4. 文献
+            item_count = profile.get_item_count()
+            count_str = str(item_count) if item_count >= 0 else "?"
+            count_item = QTableWidgetItem(count_str)
+            count_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            count_item.setData(Qt.UserRole, profile)
+            self.table.setItem(row, 3, count_item)
+
+            # 5. 插件
+            plugin_count = profile.get_plugin_count()
+            plugin_item = QTableWidgetItem(str(plugin_count))
+            plugin_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            plugin_item.setData(Qt.UserRole, profile)
+            self.table.setItem(row, 4, plugin_item)
+
+            # 6. 最后使用
+            try:
+                mtime = os.path.getmtime(profile.project_path)
+                import datetime
+                dt = datetime.datetime.fromtimestamp(mtime)
+                last_use = dt.strftime("%Y-%m-%d")
+            except:
+                last_use = "--"
+            time_item = QTableWidgetItem(last_use)
+            time_item.setData(Qt.UserRole, profile)
+            self.table.setItem(row, 5, time_item)
+
+            # 7. 操作按钮
+            btn = QPushButton(self.i18n.tr("btn_launch"))
+            btn.setStyleSheet("""
+                QPushButton {
+                    background-color: #2b7a62;
+                    color: white;
+                    border: none;
+                    border-radius: 3px;
+                    padding: 2px 8px;
+                    font-size: 10px;
+                    max-width: 60px;
+                    font-weight: bold;
+                }
+                QPushButton:hover {
+                    background-color: #1e5f4a;
+                }
+            """)
+            btn.clicked.connect(lambda p=profile: self._on_launch_project(p))
+            self.table.setCellWidget(row, 6, btn)
+
+        self.table.resizeColumnsToContents()
+        self.table.horizontalHeader().setStretchLastSection(False)
+        self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.Stretch)
 
         self._update_status()
 
     def _update_status(self):
-        i18n = self.i18n
         count = len(self.profiles)
         version = self.config.zotero_version
-        if version:
-            version_text = "Zotero {}".format(version)
-        else:
-            version_text = "未设置版本"
+        version_text = f"Zotero {version}" if version else "未设置版本"
         self.status_label.setText("✅ 就绪")
-        self.status_info_label.setText("项目: {}  |  {}".format(count, version_text))
+        self.status_info_label.setText(f"项目: {count}  |  {version_text}")
 
     def retranslate_ui(self):
-        i18n = self.i18n
-        self.setWindowTitle(i18n.tr("app_title"))
+        self.setWindowTitle(self.i18n.tr("app_title"))
+        self.refresh_btn.setText(self.i18n.tr("btn_refresh"))
+        self.new_btn.setText(self.i18n.tr("btn_new"))
+        self.pref_btn.setText(self.i18n.tr("btn_preferences"))
 
-        self.refresh_btn.setText(i18n.tr("btn_refresh"))
-        self.new_btn.setText(i18n.tr("btn_new"))
-        self.pref_btn.setText(i18n.tr("btn_preferences"))
-
-        lang = i18n.get_language()
+        lang = self.i18n.get_language()
         self.lang_btn.setText("中" if lang == "zh_CN" else "EN")
-        self.lang_btn.setToolTip(i18n.tr("tooltip_lang_switch"))
+        self.lang_btn.setToolTip(self.i18n.tr("tooltip_lang_switch"))
 
-        self.dir_label.setText(i18n.tr("label_current_dir"))
-        self.dir_browse_btn.setText(i18n.tr("btn_browse"))
-        self.dir_default_btn.setText(i18n.tr("btn_set_default"))
+        self.dir_label.setText(self.i18n.tr("label_current_dir"))
+        self.dir_browse_btn.setText(self.i18n.tr("btn_browse"))
+        self.dir_default_btn.setText(self.i18n.tr("btn_set_default"))
 
-        # 设置 tooltip
-        self.dir_path_label.setToolTip(i18n.tr("dir_tooltip"))
-        self.dir_history_btn.setToolTip(i18n.tr("history_tooltip"))
-        self.dir_browse_btn.setToolTip(i18n.tr("browse_tooltip"))
-        self.dir_default_btn.setToolTip(i18n.tr("default_tooltip"))
+        self.file_menu.setTitle(self.i18n.tr("menu_file"))
+        self.new_action.setText(self.i18n.tr("menu_new_project"))
+        self.refresh_action.setText(self.i18n.tr("menu_refresh"))
+        self.open_folder_action.setText(self.i18n.tr("menu_open_folder"))
+        self.exit_action.setText(self.i18n.tr("menu_exit"))
 
-        self.file_menu.setTitle(i18n.tr("menu_file"))
-        self.new_action.setText(i18n.tr("menu_new_project"))
-        self.refresh_action.setText(i18n.tr("menu_refresh"))
-        self.open_folder_action.setText(i18n.tr("menu_open_folder"))
-        self.exit_action.setText(i18n.tr("menu_exit"))
+        self.edit_menu.setTitle(self.i18n.tr("menu_edit"))
+        self.shortcut_action.setText(self.i18n.tr("menu_create_shortcut"))
+        self.delete_action.setText(self.i18n.tr("menu_delete"))
+        self.pref_action.setText(self.i18n.tr("menu_preferences"))
 
-        self.edit_menu.setTitle(i18n.tr("menu_edit"))
-        self.shortcut_action.setText(i18n.tr("menu_create_shortcut"))
-        self.delete_action.setText(i18n.tr("menu_delete"))
-        self.pref_action.setText(i18n.tr("menu_preferences"))
+        self.help_menu.setTitle(self.i18n.tr("menu_help"))
+        self.about_action.setText(self.i18n.tr("menu_about"))
 
-        self.help_menu.setTitle(i18n.tr("menu_help"))
-        self.about_action.setText(i18n.tr("menu_about"))
+        self.table.setHorizontalHeaderLabels([
+            self.i18n.tr("table_header_name"),
+            self.i18n.tr("table_header_language"),
+            self.i18n.tr("table_header_path"),
+            self.i18n.tr("table_header_items"),
+            self.i18n.tr("table_header_plugins"),
+            self.i18n.tr("table_header_last_used"),
+            self.i18n.tr("table_header_action")
+        ])
+        for row in range(self.table.rowCount()):
+            btn = self.table.cellWidget(row, 6)
+            if btn:
+                btn.setText(self.i18n.tr("btn_launch"))
 
         self._update_status()
 
@@ -306,34 +397,36 @@ class MainWindow(QMainWindow):
         self.i18n.set_language(new_lang)
         self.config_mgr.set_language(new_lang)
         self.retranslate_ui()
+        self._refresh_projects()
 
     def _on_refresh(self):
         self._refresh_projects()
 
     def _on_new_project(self):
         if not self.config.zotero_version:
-            QMessageBox.warning(self, "", "请先在偏好设置中设置 Zotero 版本号")
+            QMessageBox.warning(self, "", self.i18n.tr("pref_version_hint"))
             return
         if not self.config.zotero_install_dir:
-            QMessageBox.warning(self, "", "请先在偏好设置中设置 Zotero 安装路径")
+            QMessageBox.warning(self, "", "请设置 Zotero 安装路径")
             return
         if not self.config.templates_root:
-            QMessageBox.warning(self, "", "请先在偏好设置中设置模板目录")
+            QMessageBox.warning(self, "", "请设置模板目录")
             return
 
         dialog = NewProjectDialog(self.i18n, self.config, self)
         if dialog.exec_() == QDialog.Accepted and dialog.result_data:
-            name, location, create_shortcut = dialog.result_data
+            name, location, language, create_shortcut = dialog.result_data
             success, msg, project_path = self.controller.create_project(
                 project_name=name,
                 profiles_dir=location,
                 templates_root=self.config.templates_root,
                 zotero_version=self.config.zotero_version,
                 zotero_install_dir=self.config.zotero_install_dir,
+                language=language,
                 create_shortcut=create_shortcut
             )
             if success:
-                QMessageBox.information(self, "", "✅ 项目 '{}' 创建成功！".format(name))
+                QMessageBox.information(self, "", f"✅ 项目 '{name}' 创建成功！")
                 self.current_dir = location
                 self.dir_path_label.setText(location)
                 self.config_mgr.set_profiles_current(location)
@@ -344,19 +437,67 @@ class MainWindow(QMainWindow):
 
     def _on_launch_project(self, profile: Profile):
         if not self.config.zotero_install_dir:
-            QMessageBox.warning(self, "", "请先在偏好设置中设置 Zotero 安装路径")
+            QMessageBox.warning(self, "", "请设置 Zotero 安装路径")
             return
-        success = self.controller.launch_project(profile.project_path, self.config.zotero_install_dir)
-        if not success:
+        if self.controller.launch_project(profile.project_path, profile.name, self.config.zotero_install_dir):
+            pass
+        else:
             QMessageBox.warning(self, "", "启动失败")
 
-    def _on_open_folder(self):
-        current_item = self.list_widget.currentItem()
-        if not current_item:
+    def _on_item_double_clicked(self, item):
+        profile = item.data(Qt.UserRole)
+        if profile:
+            self._on_launch_project(profile)
+
+    def _on_item_clicked(self, item):
+        self.selected_row = item.row()
+        # 如果点击的是语言列（第1列），弹出语言设置
+        if item.column() == 1:
+            profile = item.data(Qt.UserRole)
+            if profile:
+                self._on_change_language(profile)
+
+    def _on_context_menu(self, pos):
+        row = self.table.rowAt(pos.y())
+        if row < 0:
             return
-        card = self.list_widget.itemWidget(current_item)
-        if card:
-            self._on_open_folder_for_profile(card.profile)
+        profile = self.table.item(row, 0).data(Qt.UserRole)
+        if not profile:
+            return
+
+        menu = QMenu(self)
+        launch_action = menu.addAction(self.i18n.tr("menu_launch"))
+        launch_action.triggered.connect(lambda: self._on_launch_project(profile))
+
+        open_action = menu.addAction(self.i18n.tr("menu_open_data_folder"))
+        open_action.triggered.connect(lambda: self._on_open_folder_for_profile(profile))
+
+        shortcut_action = menu.addAction(self.i18n.tr("menu_create_shortcut"))
+        shortcut_action.triggered.connect(lambda: self._on_create_shortcut_for_profile(profile))
+
+        # 语言子菜单
+        lang_menu = menu.addMenu(self.i18n.tr("menu_language"))
+        lang_zh = lang_menu.addAction(self.i18n.tr("lang_chinese"))
+        lang_zh.triggered.connect(lambda: self._on_set_language(profile, 'zh-CN'))
+        lang_en = lang_menu.addAction(self.i18n.tr("lang_english"))
+        lang_en.triggered.connect(lambda: self._on_set_language(profile, 'en-US'))
+        lang_sys = lang_menu.addAction(self.i18n.tr("lang_system"))
+        lang_sys.triggered.connect(lambda: self._on_set_language(profile, ''))
+
+        menu.addSeparator()
+        delete_action = menu.addAction(self.i18n.tr("menu_delete_project"))
+        delete_action.setIcon(self.style().standardIcon(QStyle.SP_DialogCancelButton))
+        delete_action.triggered.connect(lambda: self._on_delete_project_for_profile(profile))
+
+        menu.exec_(self.table.viewport().mapToGlobal(pos))
+
+    def _on_open_folder(self):
+        row = self.table.currentRow()
+        if row < 0:
+            return
+        profile = self.table.item(row, 0).data(Qt.UserRole)
+        if profile:
+            self._on_open_folder_for_profile(profile)
 
     def _on_open_folder_for_profile(self, profile: Profile):
         path = profile.project_path
@@ -366,37 +507,56 @@ class MainWindow(QMainWindow):
         try:
             os.startfile(path)
         except Exception as e:
-            QMessageBox.warning(self, "", "打开失败: {}".format(e))
+            QMessageBox.warning(self, "", f"打开失败: {e}")
 
     def _on_delete_project(self):
-        current_item = self.list_widget.currentItem()
-        if not current_item:
+        row = self.table.currentRow()
+        if row < 0:
             return
-        card = self.list_widget.itemWidget(current_item)
-        if card:
-            self._on_delete_project_for_profile(card.profile)
+        profile = self.table.item(row, 0).data(Qt.UserRole)
+        if profile:
+            self._on_delete_project_for_profile(profile)
 
     def _on_delete_project_for_profile(self, profile: Profile):
-        dialog = DeleteConfirmDialog(self.i18n, profile.name, self)
-        if dialog.exec_() == QDialog.Accepted:
-            success, msg = self.controller.delete_project(profile.project_path, profile.name)
-            if success:
-                QMessageBox.information(self, "", msg)
-                self._refresh_projects()
-            else:
-                QMessageBox.critical(self, "", msg)
+        if self.controller.is_project_in_use(profile.project_path):
+            dialog = ProjectInUseDialog(self.i18n, profile.name, profile.project_path, self)
+            if dialog.exec_() == QDialog.Accepted:
+                self._on_delete_project_for_profile(profile)
+            return
+
+        size_mb = profile.get_size() / (1024 * 1024)
+        confirm_dialog = DeleteConfirmDialog(self.i18n, profile, size_mb, self)
+        if confirm_dialog.exec_() != QDialog.Accepted:
+            return
+
+        success, msg = self.controller.delete_project(
+            profile.project_path,
+            profile.name,
+            self.current_dir
+        )
+        if success:
+            self.config_mgr.remove_project_note(profile.name)
+            success_dialog = DeleteSuccessDialog(
+                self.i18n, profile.name, profile.project_path, size_mb, self
+            )
+            success_dialog.exec_()
+            self._refresh_projects()
+        else:
+            failed_dialog = DeleteFailedDialog(self.i18n, profile.name, msg, self)
+            if failed_dialog.exec_() == QDialog.Accepted:
+                self._on_delete_project_for_profile(profile)
 
     def _on_create_shortcut(self):
-        current_item = self.list_widget.currentItem()
-        if not current_item:
+        row = self.table.currentRow()
+        if row < 0:
             return
-        card = self.list_widget.itemWidget(current_item)
-        if card:
-            self._on_create_shortcut_for_profile(card.profile)
+        profile = self.table.item(row, 0).data(Qt.UserRole)
+        if profile:
+            self._on_create_shortcut_for_profile(profile)
 
     def _on_create_shortcut_for_profile(self, profile: Profile):
         if not self.config.zotero_install_dir:
-            QMessageBox.warning(self, "", "请先在偏好设置中设置 Zotero 安装路径")
+            QMessageBox.warning(self, "", "请设置 Zotero 安装路径")
             return
         success, msg = self.controller.create_shortcut(
             profile.project_path,
@@ -406,20 +566,37 @@ class MainWindow(QMainWindow):
         if success:
             QMessageBox.information(self, "", "✅ 快捷方式已创建")
         else:
-            QMessageBox.warning(self, "", "创建失败: {}".format(msg))
+            QMessageBox.warning(self, "", f"创建失败: {msg}")
+
+    def _on_change_language(self, profile: Profile):
+        current_lang = self.controller.get_project_language(profile.project_path)
+        profiles_dir = Path(profile.project_path) / "profiles"
+        dialog = LanguageDialog(
+            self.i18n,
+            profile.name,
+            str(profiles_dir),
+            current_lang or '',
+            self
+        )
+        if dialog.exec_() == QDialog.Accepted:
+            self._refresh_projects()
+
+    def _on_set_language(self, profile: Profile, lang_code: str):
+        success = self.controller.set_project_language(profile.project_path, lang_code)
+        if success:
+            self._refresh_projects()
+            QMessageBox.information(self, "", self.i18n.tr("language_dialog_success"))
+        else:
+            QMessageBox.warning(self, "", self.i18n.tr("language_dialog_failed"))
 
     def _on_browse_dir(self):
         path = QFileDialog.getExistingDirectory(self, self.i18n.tr("btn_browse"), self.current_dir)
-        if not path:
-            return
-        if not is_valid_directory(path):
-            QMessageBox.warning(self, "", "无效目录")
-            return
-        self.current_dir = path
-        self.dir_path_label.setText(path)
-        self.config_mgr.set_profiles_current(path)
-        self.config_mgr.add_to_history(path)
-        self._refresh_projects()
+        if path and is_valid_directory(path):
+            self.current_dir = path
+            self.dir_path_label.setText(path)
+            self.config_mgr.set_profiles_current(path)
+            self.config_mgr.add_to_history(path)
+            self._refresh_projects()
 
     def _on_set_default_dir(self):
         if self.current_dir:
