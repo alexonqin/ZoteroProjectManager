@@ -167,3 +167,22 @@ In-use detection → Warning dialog → Confirmation dialog (name input + checkb
 - Auto mode silently falls back to native when template unavailable
 
 
+# [0.1.2-beta] - 2026-06-24
+
+## Added
+- Table sorting: click column headers to sort projects (ascending/descending)
+- Manual column width adjustment: all columns except Path can be resized by dragging
+- Centralized software information management (`APP_NAME`, `APP_VERSION`, etc. in config.py)
+
+## Changed
+- Language column now correctly displays each project's interface language using `profile.profiles_path`
+- Language column content updates when switching ZPL interface language (via `refresh_data`)
+- Launch button vertically centered in table rows (fixed height 20px, row height 30px)
+- Code architecture: `main_window.py` refactored into 8 modules (components/handlers/menus)
+- `gen_init.py` adapted for automatic subpackage discovery and aggregate `__init__.py` generation
+- Column width modes: Interactive (manual adjustment) for all columns except Path (Stretch)
+
+## Fixed
+- Project language column showing "Default" incorrectly
+- Language column not updating after ZPL language switch
+- Launch button alignment in table rows (was top-aligned, now center-aligned)
