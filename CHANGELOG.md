@@ -148,3 +148,22 @@ In-use detection → Warning dialog → Confirmation dialog (name input + checkb
 | New files | 7 |
 | Modified files | 10 |
 | Deleted files/directories | 1 (`widgets/`) |
+
+
+# [0.1.1-beta] - 2026-06-24
+
+## Added
+- Hybrid mode project creation (auto/template/native)
+- Template automation: auto-create profiles/, extensions/, prefs.js
+- Project-level isolation: independent profiles/ per project
+- Preferences enhancements: creation mode selector, default language, config folder button
+
+## Fixed
+- profiles.ini write path and format (Zotero 7+)
+- Language management: now writes both matchOS=false and requested together
+- Conditional field validation: dynamic dependencies based on mode
+
+## Changed
+- Auto mode silently falls back to native when template unavailable
+
+
