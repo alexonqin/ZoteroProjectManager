@@ -42,7 +42,7 @@ class MainWindow(QMainWindow):
         self.i18n = i18n
         self.config_mgr = config_mgr
         self.config = config_mgr.get_config()
-        self.controller = ZoteroController()
+        self.controller = ZoteroController(self.config_mgr)
 
         self.profiles = []
         self.current_dir = ""
@@ -240,6 +240,7 @@ class MainWindow(QMainWindow):
             self.config_mgr.set_templates_root(cfg["templates_root"])
             self.config_mgr.set_profiles_current(cfg["profiles_current"])
             self.config_mgr.set_profiles_default(cfg["profiles_default"])
+            self.config_mgr.set_creation_method(cfg["creation_method"])
             self.current_dir = cfg["profiles_current"]
             self.dir_path_label.setText(self.current_dir)
             self.config_mgr.add_to_history(self.current_dir)
@@ -402,20 +403,17 @@ class MainWindow(QMainWindow):
     def _on_refresh(self):
         self._refresh_projects()
 
+    # ------------------------------------------------------------
+    # 新建项目：直接打开对话框，所有业务逻辑由 controller 处理
+    # 主窗口不再进行任何模板检查，避免弹窗干扰
+    # 添加调试打印以确认执行路径
+    # ------------------------------------------------------------
     def _on_new_project(self):
-        if not self.config.zotero_version:
-            QMessageBox.warning(self, "", self.i18n.tr("pref_version_hint"))
-            return
-        if not self.config.zotero_install_dir:
-            QMessageBox.warning(self, "", "请设置 Zotero 安装路径")
-            return
-        if not self.config.templates_root:
-            QMessageBox.warning(self, "", "请设置模板目录")
-            return
-
+        print(f"[DEBUG] main_window._on_new_project: creation_method={self.config.creation_method}")
         dialog = NewProjectDialog(self.i18n, self.config, self)
         if dialog.exec_() == QDialog.Accepted and dialog.result_data:
             name, location, language, create_shortcut = dialog.result_data
+            print(f"[DEBUG] Creating project: name={name}, method={self.config.creation_method}")
             success, msg, project_path = self.controller.create_project(
                 project_name=name,
                 profiles_dir=location,
@@ -423,7 +421,8 @@ class MainWindow(QMainWindow):
                 zotero_version=self.config.zotero_version,
                 zotero_install_dir=self.config.zotero_install_dir,
                 language=language,
-                create_shortcut=create_shortcut
+                create_shortcut=create_shortcut,
+                creation_method=self.config.creation_method
             )
             if success:
                 QMessageBox.information(self, "", f"✅ 项目 '{name}' 创建成功！")
@@ -451,7 +450,6 @@ class MainWindow(QMainWindow):
 
     def _on_item_clicked(self, item):
         self.selected_row = item.row()
-        # 如果点击的是语言列（第1列），弹出语言设置
         if item.column() == 1:
             profile = item.data(Qt.UserRole)
             if profile:
@@ -475,7 +473,6 @@ class MainWindow(QMainWindow):
         shortcut_action = menu.addAction(self.i18n.tr("menu_create_shortcut"))
         shortcut_action.triggered.connect(lambda: self._on_create_shortcut_for_profile(profile))
 
-        # 语言子菜单
         lang_menu = menu.addMenu(self.i18n.tr("menu_language"))
         lang_zh = lang_menu.addAction(self.i18n.tr("lang_chinese"))
         lang_zh.triggered.connect(lambda: self._on_set_language(profile, 'zh-CN'))

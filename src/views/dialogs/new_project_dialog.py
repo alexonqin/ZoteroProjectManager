@@ -31,7 +31,7 @@ class NewProjectDialog(QDialog):
 
     def _setup_ui(self):
         self.setModal(True)
-        self.setFixedWidth(550)
+        self.setFixedWidth(580)
 
         layout = QVBoxLayout(self)
         layout.setSpacing(12)
@@ -78,8 +78,7 @@ class NewProjectDialog(QDialog):
         self.lang_combo.addItem(self.i18n.tr("lang_chinese"), 'zh-CN')
         self.lang_combo.addItem(self.i18n.tr("lang_english"), 'en-US')
         self.lang_combo.addItem(self.i18n.tr("lang_system"), '')
-        # 设置默认值（从配置读取）
-        default_lang = self.config.default_language if hasattr(self.config, 'default_language') else 'zh-CN'
+        default_lang = getattr(self.config, 'default_language', 'zh-CN')
         for idx in range(self.lang_combo.count()):
             if self.lang_combo.itemData(idx) == default_lang:
                 self.lang_combo.setCurrentIndex(idx)
@@ -88,10 +87,15 @@ class NewProjectDialog(QDialog):
         lang_layout.addStretch()
         layout.addLayout(lang_layout)
 
-        # 模板信息
+        # ---- 模板信息（仅显示，不阻止创建） ----
         self.template_info = QLabel()
         self.template_info.setStyleSheet("color: #666; font-size: 9px; padding-left: 80px;")
         layout.addWidget(self.template_info)
+
+        # ---- 创建方式信息 ----
+        self.method_info = QLabel()
+        self.method_info.setStyleSheet("color: #2b7a62; font-size: 9px; padding-left: 80px; font-weight: bold;")
+        layout.addWidget(self.method_info)
 
         line2 = QFrame()
         line2.setFrameShape(QFrame.HLine)
@@ -129,6 +133,8 @@ class NewProjectDialog(QDialog):
         layout.addLayout(btn_layout)
 
         self.name_edit.textChanged.connect(self._update_preview)
+        self.loc_edit.textChanged.connect(self._update_preview)
+        self.lang_combo.currentIndexChanged.connect(self._update_preview)
 
     def retranslate_ui(self):
         self.setWindowTitle(self.i18n.tr("new_project_title"))
@@ -141,7 +147,7 @@ class NewProjectDialog(QDialog):
         self.create_btn.setText(self.i18n.tr("new_project_btn_create"))
         self.cancel_btn.setText(self.i18n.tr("new_project_btn_cancel"))
 
-        # 更新语言下拉列表文字
+        # 更新语言下拉
         for idx in range(self.lang_combo.count()):
             data = self.lang_combo.itemData(idx)
             if data == 'zh-CN':
@@ -151,6 +157,8 @@ class NewProjectDialog(QDialog):
             elif data == '':
                 self.lang_combo.setItemText(idx, self.i18n.tr("lang_system"))
 
+        self._update_preview()
+
     def _on_browse(self):
         path = QFileDialog.getExistingDirectory(
             self,
@@ -159,6 +167,37 @@ class NewProjectDialog(QDialog):
         )
         if path and is_valid_directory(path):
             self.loc_edit.setText(path)
+
+    def _get_creation_method(self) -> str:
+        return getattr(self.config, 'creation_method', 'auto')
+
+    def _has_matching_template(self) -> bool:
+        templates_root = self.config.templates_root
+        version = self.config.zotero_version
+        if not templates_root or not version:
+            return False
+        templates = self.controller.get_templates(templates_root)
+        for t in templates:
+            if t == f"v{version}" or t.startswith(f"v{version.split('.')[0]}."):
+                return True
+        return False
+
+    def _get_method_display(self) -> str:
+        method = self._get_creation_method()
+        has_template = self._has_matching_template()
+
+        if method == "template":
+            if has_template:
+                return self.i18n.tr("new_project_method_template")
+            else:
+                return "⚠️ " + self.i18n.tr("new_project_method_template_warning")
+        elif method == "native":
+            return self.i18n.tr("new_project_method_native")
+        else:  # auto
+            if has_template:
+                return self.i18n.tr("new_project_method_template")
+            else:
+                return self.i18n.tr("new_project_method_native")
 
     def _update_preview(self):
         name = self.name_edit.text().strip()
@@ -180,6 +219,14 @@ class NewProjectDialog(QDialog):
                 self.template_info.setStyleSheet("color: #cc3333; font-size: 9px; padding-left: 80px;")
         else:
             self.template_info.setText("")
+
+        # 更新创建方式信息
+        method_display = self._get_method_display()
+        self.method_info.setText("💡 " + method_display)
+        if "⚠️" in method_display:
+            self.method_info.setStyleSheet("color: #cc8833; font-size: 9px; padding-left: 80px; font-weight: bold;")
+        else:
+            self.method_info.setStyleSheet("color: #2b7a62; font-size: 9px; padding-left: 80px; font-weight: bold;")
 
     def _on_create(self):
         name = self.name_edit.text().strip()

@@ -25,6 +25,9 @@ class AppConfig:
     language: str = "zh_CN"
     default_language: str = "zh-CN"   # 新项目默认语言
 
+    # 项目创建方式
+    creation_method: str = "auto"     # "auto" | "template" | "native"
+
     # 界面设置
     window_size: Dict[str, int] = field(default_factory=lambda: {"width": 800, "height": 600})
     window_position: Dict[str, int] = field(default_factory=lambda: {"x": -1, "y": -1})
@@ -45,6 +48,7 @@ class AppConfig:
             "profiles_history": self.profiles_history,
             "language": self.language,
             "default_language": self.default_language,
+            "creation_method": self.creation_method,
             "window_size": self.window_size,
             "window_position": self.window_position,
             "auto_create_shortcut": self.auto_create_shortcut,
@@ -62,6 +66,7 @@ class AppConfig:
             profiles_history=data.get("profiles_history", []),
             language=data.get("language", "zh_CN"),
             default_language=data.get("default_language", "zh-CN"),
+            creation_method=data.get("creation_method", "auto"),
             window_size=data.get("window_size", {"width": 800, "height": 600}),
             window_position=data.get("window_position", {"x": -1, "y": -1}),
             auto_create_shortcut=data.get("auto_create_shortcut", True),

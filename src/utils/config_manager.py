@@ -91,6 +91,13 @@ class ConfigManager:
         self._config.default_language = lang
         self.save()
 
+    def get_creation_method(self) -> str:
+        return self._config.creation_method
+    def set_creation_method(self, method: str):
+        if method in ["auto", "template", "native"]:
+            self._config.creation_method = method
+            self.save()
+
     def get_window_size(self) -> tuple:
         return (self._config.window_size.get("width", 800),
                 self._config.window_size.get("height", 600))

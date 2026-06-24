@@ -3,12 +3,16 @@
 偏好设置对话框
 """
 
+import os
+import subprocess
+from pathlib import Path
+
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
-    QPushButton, QFileDialog, QFrame, QMessageBox, QComboBox
+    QPushButton, QFileDialog, QFrame, QMessageBox, QComboBox,
+    QRadioButton, QButtonGroup
 )
 from PySide6.QtCore import Qt
-from pathlib import Path
 
 from utils.i18n import I18n
 from utils.config_manager import ConfigManager
@@ -33,7 +37,7 @@ class PreferencesDialog(QDialog):
         self.setFixedWidth(620)
 
         layout = QVBoxLayout(self)
-        layout.setSpacing(12)
+        layout.setSpacing(10)
 
         self.title_label = QLabel()
         self.title_label.setStyleSheet("font-size: 16px; font-weight: bold;")
@@ -130,13 +134,54 @@ class PreferencesDialog(QDialog):
         self.default_lang_hint.setStyleSheet("color: #888; font-size: 9px; padding-left: 120px;")
         layout.addWidget(self.default_lang_hint)
 
+        # ---- 项目创建方式 ----
+        method_layout = QVBoxLayout()
+        method_layout.setSpacing(4)
+        self.method_label = QLabel()
+        self.method_label.setMinimumWidth(120)
+        method_layout.addWidget(self.method_label)
+
+        self.method_group = QButtonGroup(self)
+        self.method_auto = QRadioButton()
+        self.method_template = QRadioButton()
+        self.method_native = QRadioButton()
+        self.method_group.addButton(self.method_auto, 0)
+        self.method_group.addButton(self.method_template, 1)
+        self.method_group.addButton(self.method_native, 2)
+
+        self.method_hint = QLabel()
+        self.method_hint.setStyleSheet("color: #888; font-size: 9px; padding-left: 20px;")
+        self.method_hint.setWordWrap(True)
+
+        method_layout.addWidget(self.method_auto)
+        method_layout.addWidget(self.method_template)
+        method_layout.addWidget(self.method_native)
+        method_layout.addWidget(self.method_hint)
+        layout.addLayout(method_layout)
+
+        # 连接信号
+        self.method_auto.toggled.connect(self._on_method_changed)
+        self.method_template.toggled.connect(self._on_method_changed)
+        self.method_native.toggled.connect(self._on_method_changed)
+
+        # ---- 底部状态提示 ----
+        self.bottom_status = QLabel()
+        self.bottom_status.setWordWrap(True)
+        self.bottom_status.setStyleSheet("color: #cc8833; font-size: 10px; padding: 4px; background-color: #fff8e0; border-radius: 3px;")
+        layout.addWidget(self.bottom_status)
+
         line2 = QFrame()
         line2.setFrameShape(QFrame.HLine)
         line2.setFrameShadow(QFrame.Sunken)
         layout.addWidget(line2)
 
-        # 按钮
+        # 按钮行
         btn_layout = QHBoxLayout()
+        btn_layout.setSpacing(8)
+        self.open_config_btn = QPushButton()
+        self.open_config_btn.setStyleSheet("font-size: 10px; padding: 4px 8px;")
+        self.open_config_btn.clicked.connect(self._on_open_config_folder)
+        btn_layout.addWidget(self.open_config_btn)
         btn_layout.addStretch()
         self.cancel_btn = QPushButton()
         self.cancel_btn.clicked.connect(self.reject)
@@ -162,22 +207,35 @@ class PreferencesDialog(QDialog):
     def retranslate_ui(self):
         self.setWindowTitle(self.i18n.tr("pref_title"))
         self.title_label.setText(self.i18n.tr("pref_title"))
+
         self.version_label.setText("🔢 Zotero 版本号:")
         self.version_hint.setText("💡 " + self.i18n.tr("pref_version_hint"))
+
         path_label = self.findChild(QLabel, "path_label")
         if path_label:
             path_label.setText("📁 Zotero 安装路径:")
         self.browse_btn.setText(self.i18n.tr("btn_browse"))
+
         template_label = self.findChild(QLabel, "template_label")
         if template_label:
             template_label.setText("📁 模板目录:")
         self.template_browse_btn.setText(self.i18n.tr("btn_browse"))
+
         profiles_label = self.findChild(QLabel, "profiles_label")
         if profiles_label:
             profiles_label.setText("📁 项目库（Profiles 目录）:")
         self.profiles_hint.setText("💡 " + self.i18n.tr("pref_profiles_hint"))
+
         self.default_lang_label.setText("🌐 " + self.i18n.tr("pref_default_language"))
         self.default_lang_hint.setText("💡 " + self.i18n.tr("pref_default_language_hint"))
+
+        self.method_label.setText(self.i18n.tr("pref_creation_method"))
+        self.method_auto.setText(self.i18n.tr("pref_creation_auto"))
+        self.method_template.setText(self.i18n.tr("pref_creation_template"))
+        self.method_native.setText(self.i18n.tr("pref_creation_native"))
+        self.method_hint.setText(self.i18n.tr("pref_creation_hint"))
+
+        self.open_config_btn.setText(self.i18n.tr("pref_open_config_folder"))
         self.save_btn.setText(self.i18n.tr("pref_btn_save"))
         self.cancel_btn.setText(self.i18n.tr("pref_btn_cancel"))
 
@@ -191,6 +249,8 @@ class PreferencesDialog(QDialog):
             elif data == '':
                 self.default_lang_combo.setItemText(idx, self.i18n.tr("lang_system"))
 
+        self._update_ui_state()
+
     def _load_config(self):
         self.version_edit.setText(self.config.zotero_version)
         self.path_edit.setText(self.config.zotero_install_dir)
@@ -203,8 +263,17 @@ class PreferencesDialog(QDialog):
                 self.default_lang_combo.setCurrentIndex(idx)
                 break
 
+        method = self.config.creation_method
+        if method == "template":
+            self.method_template.setChecked(True)
+        elif method == "native":
+            self.method_native.setChecked(True)
+        else:
+            self.method_auto.setChecked(True)
+
         self._update_path_status()
         self._update_template_status()
+        self._update_ui_state()
 
     def _update_path_status(self):
         install_dir = self.path_edit.text()
@@ -243,6 +312,47 @@ class PreferencesDialog(QDialog):
         self.template_status.setText("⚠️ 模板目录无效或为空")
         self.template_status.setStyleSheet("color: #cc3333; font-size: 9px; padding-left: 120px;")
 
+    def _on_method_changed(self):
+        self._update_ui_state()
+
+    def _update_ui_state(self):
+        method = self._get_method()
+        is_template_required = (method == "template")
+
+        # 更新版本号和模板目录的必填状态提示
+        if is_template_required:
+            self.version_label.setStyleSheet("font-weight: bold; color: #cc3333;")
+            self.version_label.setText("🔢 Zotero 版本号:（" + self.i18n.tr("first_launch_required") + "）")
+            self.version_hint.setText("💡 " + self.i18n.tr("pref_version_required_hint"))
+        else:
+            self.version_label.setStyleSheet("font-weight: normal; color: #444;")
+            self.version_label.setText("🔢 Zotero 版本号:（" + self.i18n.tr("first_launch_optional") + "）")
+            self.version_hint.setText("💡 " + self.i18n.tr("pref_version_optional_hint"))
+
+        if is_template_required:
+            self.template_status.setVisible(True)
+        else:
+            self.template_status.setVisible(False)
+
+        # 底部状态
+        if method == "auto":
+            self.bottom_status.setText("💡 " + self.i18n.tr("pref_auto_status"))
+            self.bottom_status.setStyleSheet("color: #2b7a62; font-size: 10px; padding: 4px; background-color: #e8f5e9; border-radius: 3px;")
+        elif method == "template":
+            self.bottom_status.setText("⚠️ " + self.i18n.tr("pref_template_status"))
+            self.bottom_status.setStyleSheet("color: #cc3333; font-size: 10px; padding: 4px; background-color: #ffebee; border-radius: 3px;")
+        else:
+            self.bottom_status.setText("💡 " + self.i18n.tr("pref_native_status"))
+            self.bottom_status.setStyleSheet("color: #2b7a62; font-size: 10px; padding: 4px; background-color: #e8f5e9; border-radius: 3px;")
+
+    def _get_method(self) -> str:
+        if self.method_template.isChecked():
+            return "template"
+        elif self.method_native.isChecked():
+            return "native"
+        else:
+            return "auto"
+
     def _on_browse(self):
         dir_path = QFileDialog.getExistingDirectory(
             self,
@@ -272,27 +382,67 @@ class PreferencesDialog(QDialog):
         if dir_path:
             self.profiles_edit.setText(dir_path)
 
-    def _on_save(self):
-        version = self.version_edit.text().strip()
-        if not version:
-            QMessageBox.warning(self, "", "请正确输入 Zotero 版本号")
+    def _on_open_config_folder(self):
+        config_file = self.config_mgr.config_path
+        if not config_file.exists():
+            QMessageBox.information(
+                self,
+                self.i18n.tr("pref_open_config_folder"),
+                self.i18n.tr("pref_config_not_found")
+            )
             return
+        try:
+            if os.name == 'nt':
+                subprocess.Popen(['explorer', '/select,', str(config_file)])
+            else:
+                folder = config_file.parent
+                if os.name == 'posix':
+                    subprocess.Popen(['xdg-open', str(folder)])
+                elif os.name == 'darwin':
+                    subprocess.Popen(['open', str(folder)])
+        except Exception as e:
+            QMessageBox.warning(
+                self,
+                self.i18n.tr("pref_open_config_folder"),
+                f"无法打开文件夹: {e}"
+            )
+
+    def _on_save(self):
+        method = self._get_method()
         install_dir = self.path_edit.text()
+        profiles_dir = self.profiles_edit.text()
+
+        # 始终必填字段验证
         if not install_dir or not is_valid_directory(install_dir):
             QMessageBox.warning(self, "", "请选择有效的 Zotero 安装目录")
             return
-        exe_path = Path(install_dir) / "zotero.exe"
-        if not exe_path.exists():
+        if not (Path(install_dir) / "zotero.exe").exists():
             QMessageBox.warning(self, "", "未找到 zotero.exe，请选择正确的安装目录")
             return
+        if not profiles_dir or not is_valid_directory(profiles_dir):
+            QMessageBox.warning(self, "", "请选择有效的项目库目录")
+            return
 
+        # 条件必填字段验证
+        version = self.version_edit.text().strip()
+        templates_root = self.template_edit.text()
+        if method == "template":
+            if not version:
+                QMessageBox.warning(self, "", "使用模板模式需要设置 Zotero 版本号")
+                return
+            if not templates_root or not is_valid_directory(templates_root):
+                QMessageBox.warning(self, "", "使用模板模式需要设置模板目录")
+                return
+
+        # 保存配置
         self.config.zotero_version = version
         self.config.zotero_install_dir = install_dir
-        self.config.templates_root = self.template_edit.text()
-        self.config.profiles_current = self.profiles_edit.text()
+        self.config.templates_root = templates_root
+        self.config.profiles_current = profiles_dir
         if not self.config.profiles_default:
-            self.config.profiles_default = self.config.profiles_current
+            self.config.profiles_default = profiles_dir
         self.config.default_language = self.default_lang_combo.currentData()
+        self.config.creation_method = method
 
         self.config_mgr.save()
         self.accept()

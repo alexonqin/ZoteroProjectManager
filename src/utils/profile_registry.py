@@ -84,7 +84,7 @@ def register_profile(name: str, profile_path: str) -> bool:
     ini_path.parent.mkdir(parents=True, exist_ok=True)
 
     config = configparser.ConfigParser()
-    config.optionxform = str  # 保留键名大小写
+    config.optionxform = str
     if ini_path.exists():
         config.read(str(ini_path), encoding='utf-8')
 
@@ -95,7 +95,7 @@ def register_profile(name: str, profile_path: str) -> bool:
                 config.set(section, 'Path', profile_path)
                 config.set(section, 'IsRelative', '0')
                 with open(ini_path, 'w', encoding='utf-8') as f:
-                    config.write(f, space_around_delimiters=False)  # 等号两边无空格
+                    config.write(f, space_around_delimiters=False)
                 return True
 
     # 找到下一个可用的编号
@@ -119,7 +119,7 @@ def register_profile(name: str, profile_path: str) -> bool:
     }
 
     with open(ini_path, 'w', encoding='utf-8') as f:
-        config.write(f, space_around_delimiters=False)  # 等号两边无空格
+        config.write(f, space_around_delimiters=False)
     return True
 
 
@@ -146,3 +146,40 @@ def unregister_profile(name: str) -> bool:
             config.write(f, space_around_delimiters=False)
         return True
     return False
+
+
+def set_default_profile(name: str) -> bool:
+    """
+    将指定 Profile 设为默认，其他所有 Profile 设为非默认
+    同时设置 StartWithLastProfile=1
+    """
+    ini_path = get_profiles_ini_path()
+    if not ini_path or not ini_path.exists():
+        return False
+
+    config = configparser.ConfigParser()
+    config.optionxform = str
+    config.read(str(ini_path), encoding='utf-8')
+
+    # 找到对应的 Profile 区块并设置 Default
+    found = False
+    for section in config.sections():
+        if section.startswith('Profile'):
+            current_name = config.get(section, 'Name', fallback='')
+            if current_name == name:
+                config.set(section, 'Default', '1')
+                found = True
+            else:
+                config.set(section, 'Default', '0')
+
+    if not found:
+        return False
+
+    # 设置 General 选项
+    if 'General' not in config:
+        config['General'] = {}
+    config.set('General', 'StartWithLastProfile', '1')
+
+    with open(ini_path, 'w', encoding='utf-8') as f:
+        config.write(f, space_around_delimiters=False)
+    return True
