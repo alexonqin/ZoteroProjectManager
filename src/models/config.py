@@ -12,7 +12,7 @@ from typing import List, Dict, Optional
 # ============================================================
 APP_NAME = "Zotero Project Launcher"
 APP_ABBR = "ZPL"
-APP_VERSION = "v0.1.2-beta"
+APP_VERSION = "v0.1.3-beta"
 APP_COPYRIGHT = "© 2026 alexonqin"
 APP_LICENSE = "MIT License"
 APP_REPO_URL = "https://github.com/alexonqin/ZoteroProjectLauncher"
