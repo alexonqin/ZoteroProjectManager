@@ -186,3 +186,28 @@ In-use detection → Warning dialog → Confirmation dialog (name input + checkb
 - Project language column showing "Default" incorrectly
 - Language column not updating after ZPL language switch
 - Launch button alignment in table rows (was top-aligned, now center-aligned)
+
+# [0.1.3-beta] - 2026-06-25
+
+## Added
+- Hybrid creation modes: Full mode (55MB) and Light mode (19MB)
+- Table sorting: click column headers to sort projects (ascending/descending)
+- Manual column width adjustment: all columns except Path can be resized by dragging
+- Centralized software information management (`APP_NAME`, `APP_VERSION`, etc. in config.py)
+- Project export functionality (ZIP packaging for migration)
+- Project import functionality (auto-extract, register Profile, generate shortcuts)
+
+## Changed
+- Full mode creation flow: empty Profile + Zotero auto-completion generates 55MB complete project
+- Language column correctly displays project interface language using `profile.profiles_path`
+- Launch button vertically centered in table rows (fixed height 20px, row height 30px)
+- Language column content updates when switching ZPL interface language
+- Desktop shortcuts removed for new and imported projects; only library shortcuts are kept
+- Column width modes: Interactive for all columns except Path (Stretch)
+
+## Fixed
+- Project language column showing "Default" incorrectly
+- Language column not updating after ZPL language switch
+- Launch button alignment in table rows (was top-aligned, now center-aligned)
+- Launch button starting wrong project after sorting
+
