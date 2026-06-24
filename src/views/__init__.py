@@ -2,5 +2,9 @@
 # 该文件由 gen_init.py 自动生成，请勿手动编辑
 
 from .main_window import MainWindow
+from .components import DirectoryBar, StatusBarWidget, TableWidget, ToolbarWidget
+from .dialogs import AboutDialog, DeleteConfirmDialog, DeleteFailedDialog, DeleteSuccessDialog, FirstLaunchDialog, LanguageDialog, NewProjectDialog, PreferencesDialog, ProjectInUseDialog
+from .handlers import LanguageHandler, ProjectHandler
+from .menus import MainMenu
 
-__all__ = ['MainWindow']
+__all__ = ['MainWindow', 'DirectoryBar', 'StatusBarWidget', 'TableWidget', 'ToolbarWidget', 'AboutDialog', 'DeleteConfirmDialog', 'DeleteFailedDialog', 'DeleteSuccessDialog', 'FirstLaunchDialog', 'LanguageDialog', 'NewProjectDialog', 'PreferencesDialog', 'ProjectInUseDialog', 'LanguageHandler', 'ProjectHandler', 'MainMenu']

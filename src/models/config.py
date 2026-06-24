@@ -7,9 +7,21 @@ from dataclasses import dataclass, field
 from typing import List, Dict, Optional
 
 
+# ============================================================
+# 应用元数据（版本、名称等）
+# ============================================================
+APP_NAME = "Zotero Project Launcher"
+APP_ABBR = "ZPL"
+APP_VERSION = "v0.1.2-beta"
+APP_COPYRIGHT = "© 2026 alexonqin"
+APP_LICENSE = "MIT License"
+APP_REPO_URL = "https://github.com/alexonqin/ZoteroProjectLauncher"
+APP_ISSUE_URL = "https://github.com/alexonqin/ZoteroProjectLauncher/issues"
+
+
 @dataclass
 class AppConfig:
-    """应用程序配置"""
+    """应用程序配置（用户偏好）"""
 
     # Zotero 设置
     zotero_version: str = ""
