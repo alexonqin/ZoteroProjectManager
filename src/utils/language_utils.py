@@ -56,7 +56,6 @@ def write_language(profile_dir: str, lang_code: str) -> bool:
         print(f"[DEBUG] read prefs.js, length={len(content)}")
 
         # 准备要写入的行
-        # 同时写入 intl.locale.matchOS = false 以确保语言设置生效
         lines_to_add = [
             f'user_pref("intl.locale.matchOS", false);',
             f'user_pref("intl.locale.requested", "{lang_code}");'
@@ -84,7 +83,15 @@ def write_language(profile_dir: str, lang_code: str) -> bool:
         with open(prefs_path, 'w', encoding='utf-8') as f:
             f.write(content)
         print(f"[DEBUG] Successfully wrote language settings to {prefs_path}")
-        return True
+
+        # 验证写入是否成功
+        verify_lang = read_language(profile_dir)
+        if verify_lang == lang_code:
+            print("[DEBUG] Language verification passed.")
+            return True
+        else:
+            print(f"[ERROR] Language verification failed: expected '{lang_code}', got '{verify_lang}'")
+            return False
     except Exception as e:
         print(f"[ERROR] write_language failed: {e}")
         return False

@@ -10,7 +10,7 @@ from pathlib import Path
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
     QPushButton, QFileDialog, QFrame, QMessageBox, QComboBox,
-    QRadioButton, QButtonGroup
+    QRadioButton, QButtonGroup, QGroupBox
 )
 from PySide6.QtCore import Qt
 
@@ -34,7 +34,7 @@ class PreferencesDialog(QDialog):
 
     def _setup_ui(self):
         self.setModal(True)
-        self.setFixedWidth(620)
+        self.setFixedWidth(640)
 
         layout = QVBoxLayout(self)
         layout.setSpacing(10)
@@ -138,7 +138,6 @@ class PreferencesDialog(QDialog):
         method_layout = QVBoxLayout()
         method_layout.setSpacing(4)
         self.method_label = QLabel()
-        self.method_label.setMinimumWidth(120)
         method_layout.addWidget(self.method_label)
 
         self.method_group = QButtonGroup(self)
@@ -159,10 +158,31 @@ class PreferencesDialog(QDialog):
         method_layout.addWidget(self.method_hint)
         layout.addLayout(method_layout)
 
-        # 连接信号
-        self.method_auto.toggled.connect(self._on_method_changed)
-        self.method_template.toggled.connect(self._on_method_changed)
-        self.method_native.toggled.connect(self._on_method_changed)
+        # ---- 项目完整度 ----
+        profile_mode_layout = QVBoxLayout()
+        profile_mode_layout.setSpacing(4)
+        self.profile_mode_label = QLabel()
+        profile_mode_layout.addWidget(self.profile_mode_label)
+
+        self.profile_mode_group = QButtonGroup(self)
+        self.profile_mode_full = QRadioButton()
+        self.profile_mode_light = QRadioButton()
+        self.profile_mode_group.addButton(self.profile_mode_full, 0)
+        self.profile_mode_group.addButton(self.profile_mode_light, 1)
+
+        self.profile_mode_full_desc = QLabel()
+        self.profile_mode_full_desc.setStyleSheet("color: #666; font-size: 9px; padding-left: 20px;")
+        self.profile_mode_full_desc.setWordWrap(True)
+
+        self.profile_mode_light_desc = QLabel()
+        self.profile_mode_light_desc.setStyleSheet("color: #666; font-size: 9px; padding-left: 20px;")
+        self.profile_mode_light_desc.setWordWrap(True)
+
+        profile_mode_layout.addWidget(self.profile_mode_full)
+        profile_mode_layout.addWidget(self.profile_mode_full_desc)
+        profile_mode_layout.addWidget(self.profile_mode_light)
+        profile_mode_layout.addWidget(self.profile_mode_light_desc)
+        layout.addLayout(profile_mode_layout)
 
         # ---- 底部状态提示 ----
         self.bottom_status = QLabel()
@@ -233,7 +253,13 @@ class PreferencesDialog(QDialog):
         self.method_auto.setText(self.i18n.tr("pref_creation_auto"))
         self.method_template.setText(self.i18n.tr("pref_creation_template"))
         self.method_native.setText(self.i18n.tr("pref_creation_native"))
-        self.method_hint.setText(self.i18n.tr("pref_creation_hint"))
+        self.method_hint.setText("💡 " + self.i18n.tr("pref_creation_hint"))
+
+        self.profile_mode_label.setText(self.i18n.tr("pref_profile_mode"))
+        self.profile_mode_full.setText(self.i18n.tr("pref_profile_mode_full"))
+        self.profile_mode_full_desc.setText("💡 " + self.i18n.tr("pref_profile_mode_full_desc"))
+        self.profile_mode_light.setText(self.i18n.tr("pref_profile_mode_light"))
+        self.profile_mode_light_desc.setText("💡 " + self.i18n.tr("pref_profile_mode_light_desc"))
 
         self.open_config_btn.setText(self.i18n.tr("pref_open_config_folder"))
         self.save_btn.setText(self.i18n.tr("pref_btn_save"))
@@ -270,6 +296,12 @@ class PreferencesDialog(QDialog):
             self.method_native.setChecked(True)
         else:
             self.method_auto.setChecked(True)
+
+        profile_mode = self.config.creation_profile_mode
+        if profile_mode == "light":
+            self.profile_mode_light.setChecked(True)
+        else:
+            self.profile_mode_full.setChecked(True)
 
         self._update_path_status()
         self._update_template_status()
@@ -319,7 +351,6 @@ class PreferencesDialog(QDialog):
         method = self._get_method()
         is_template_required = (method == "template")
 
-        # 更新版本号和模板目录的必填状态提示
         if is_template_required:
             self.version_label.setStyleSheet("font-weight: bold; color: #cc3333;")
             self.version_label.setText("🔢 Zotero 版本号:（" + self.i18n.tr("first_launch_required") + "）")
@@ -334,7 +365,6 @@ class PreferencesDialog(QDialog):
         else:
             self.template_status.setVisible(False)
 
-        # 底部状态
         if method == "auto":
             self.bottom_status.setText("💡 " + self.i18n.tr("pref_auto_status"))
             self.bottom_status.setStyleSheet("color: #2b7a62; font-size: 10px; padding: 4px; background-color: #e8f5e9; border-radius: 3px;")
@@ -412,7 +442,6 @@ class PreferencesDialog(QDialog):
         install_dir = self.path_edit.text()
         profiles_dir = self.profiles_edit.text()
 
-        # 始终必填字段验证
         if not install_dir or not is_valid_directory(install_dir):
             QMessageBox.warning(self, "", "请选择有效的 Zotero 安装目录")
             return
@@ -423,7 +452,6 @@ class PreferencesDialog(QDialog):
             QMessageBox.warning(self, "", "请选择有效的项目库目录")
             return
 
-        # 条件必填字段验证
         version = self.version_edit.text().strip()
         templates_root = self.template_edit.text()
         if method == "template":
@@ -434,7 +462,9 @@ class PreferencesDialog(QDialog):
                 QMessageBox.warning(self, "", "使用模板模式需要设置模板目录")
                 return
 
-        # 保存配置
+        # 获取完整度模式
+        profile_mode = "full" if self.profile_mode_full.isChecked() else "light"
+
         self.config.zotero_version = version
         self.config.zotero_install_dir = install_dir
         self.config.templates_root = templates_root
@@ -443,6 +473,7 @@ class PreferencesDialog(QDialog):
             self.config.profiles_default = profiles_dir
         self.config.default_language = self.default_lang_combo.currentData()
         self.config.creation_method = method
+        self.config.creation_profile_mode = profile_mode
 
         self.config_mgr.save()
         self.accept()

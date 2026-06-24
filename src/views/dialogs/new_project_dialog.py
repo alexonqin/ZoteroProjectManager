@@ -5,7 +5,7 @@
 
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
-    QPushButton, QCheckBox, QFileDialog, QFrame, QMessageBox,
+    QPushButton, QFileDialog, QFrame, QMessageBox,
     QComboBox
 )
 from PySide6.QtCore import Qt
@@ -23,7 +23,7 @@ class NewProjectDialog(QDialog):
         self.config = config
         self.controller = ZoteroController()
 
-        self.result_data = None  # (name, location, language, create_shortcut)
+        self.result_data = None  # (name, location, language)
 
         self._setup_ui()
         self.retranslate_ui()
@@ -102,10 +102,7 @@ class NewProjectDialog(QDialog):
         line2.setFrameShadow(QFrame.Sunken)
         layout.addWidget(line2)
 
-        # 选项
-        self.shortcut_cb = QCheckBox()
-        self.shortcut_cb.setChecked(self.config.auto_create_shortcut)
-        layout.addWidget(self.shortcut_cb)
+        # 桌面快捷方式复选框已移除
 
         layout.addStretch()
 
@@ -143,7 +140,6 @@ class NewProjectDialog(QDialog):
         self.loc_label.setText(self.i18n.tr("new_project_location_label"))
         self.lang_label.setText(self.i18n.tr("new_project_language_label"))
         self.browse_btn.setText(self.i18n.tr("btn_browse"))
-        self.shortcut_cb.setText(self.i18n.tr("new_project_create_shortcut"))
         self.create_btn.setText(self.i18n.tr("new_project_btn_create"))
         self.cancel_btn.setText(self.i18n.tr("new_project_btn_cancel"))
 
@@ -250,5 +246,5 @@ class NewProjectDialog(QDialog):
             QMessageBox.warning(self, "", f"项目 '{name}' 已存在")
             return
 
-        self.result_data = (name, location, language, self.shortcut_cb.isChecked())
+        self.result_data = (name, location, language)
         self.accept()

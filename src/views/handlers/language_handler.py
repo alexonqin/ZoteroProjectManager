@@ -59,20 +59,24 @@ class LanguageHandler:
             self.parent
         )
         if dialog.exec_() == QDialog.Accepted:
-            self.on_refresh_table()
+            # 语言修改成功后，刷新项目列表以更新语言列显示
+            self.parent.project_handler.on_refresh()
     
     def on_set_project_language(self, profile, lang_code: str):
         """直接设置项目语言（右键菜单调用）"""
         success = self.controller.set_project_language(profile.project_path, lang_code)
         if success:
-            self.on_refresh_table()
+            # 刷新项目列表以更新语言列显示
+            self.parent.project_handler.on_refresh()
             QMessageBox.information(self.parent, "", self.i18n.tr("language_dialog_success"))
         else:
             QMessageBox.warning(self.parent, "", self.i18n.tr("language_dialog_failed"))
     
     def on_refresh_table(self):
-        """刷新表格（内部方法）"""
-        if hasattr(self.parent, '_refresh_projects'):
+        """刷新表格数据（兼容旧调用）"""
+        if hasattr(self.parent, 'project_handler'):
+            self.parent.project_handler.on_refresh()
+        elif hasattr(self.parent, '_refresh_projects'):
             self.parent._refresh_projects()
         elif hasattr(self, '_refresh_callback'):
             self._refresh_callback()

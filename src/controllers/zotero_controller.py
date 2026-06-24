@@ -216,11 +216,18 @@ class ZoteroController:
         return projects
 
     # ---------- 辅助：确保 profiles/ 结构完整 ----------
-    def _ensure_profile_structure(self, project_path: str, language: str) -> bool:
+    def _ensure_profile_structure(self, project_path: str, language: str, 
+                                  precreate_prefs: bool = True) -> bool:
         """
         确保项目目录下存在完整的 profiles/ 配置结构。
+        
+        Args:
+            project_path: 项目根目录路径
+            language: 语言代码（仅当 precreate_prefs=True 时使用）
+            precreate_prefs: 是否预先创建 prefs.js（True: 轻量模式，False: 完整模式）
         """
-        print(f"[DEBUG] _ensure_profile_structure called with project_path={project_path}, language={language}")
+        print(f"[DEBUG] _ensure_profile_structure called with project_path={project_path}, "
+              f"language={language}, precreate_prefs={precreate_prefs}")
         project_dir = Path(project_path)
         profiles_dir = project_dir / "profiles"
 
@@ -239,30 +246,43 @@ class ZoteroController:
             print(f"[ERROR] 创建 extensions 目录失败: {e}")
             return False
 
+        # 如果不需要预先创建 prefs.js（完整模式），直接返回
+        if not precreate_prefs:
+            prefs_path = profiles_dir / "prefs.js"
+            if prefs_path.exists():
+                try:
+                    prefs_path.unlink()
+                    print(f"[DEBUG] Removed existing prefs.js for full mode")
+                except Exception:
+                    pass
+            print(f"[DEBUG] Skipping prefs.js creation for full mode")
+            return True
+
+        # 轻量模式下直接写入完整的 prefs.js
+        if language is None:
+            language = 'zh-CN'
+        prefs_content = f'''// Mozilla User Preferences
+user_pref("intl.locale.matchOS", false);
+user_pref("intl.locale.requested", "{language}");
+'''
         prefs_path = profiles_dir / "prefs.js"
-        if not prefs_path.exists():
-            try:
-                default_content = '// ZPL 自动生成的配置文件\n'
-                prefs_path.write_text(default_content, encoding='utf-8')
-                print(f"[DEBUG] Created prefs.js: {prefs_path}")
-            except Exception as e:
-                print(f"[ERROR] 创建 prefs.js 失败: {e}")
-                return False
+        try:
+            prefs_path.write_text(prefs_content, encoding='utf-8')
+            print(f"[DEBUG] Written prefs.js with language '{language}'")
+        except Exception as e:
+            print(f"[ERROR] 写入 prefs.js 失败: {e}")
+            return False
 
-        if language is not None:
-            print(f"[DEBUG] Calling write_language with language='{language}', profiles_dir={profiles_dir}")
-            success = write_language(str(profiles_dir), language)
-            if success:
-                print(f"[DEBUG] write_language succeeded")
-            else:
-                print(f"[ERROR] write_language failed for language='{language}'")
-                return False
+        # 验证（仅轻量模式）
+        verify_lang = read_language(str(profiles_dir))
+        if verify_lang == language:
+            print(f"[DEBUG] Language verification passed: {verify_lang}")
+            return True
         else:
-            print("[WARNING] language is None, skipping write_language")
+            print(f"[ERROR] Language verification failed: expected {language}, got {verify_lang}")
+            return False
 
-        return True
-
-    # ---------- 原生生成模式 ----------
+    # ---------- 等待初始化 ----------
     def _wait_for_zotero_init(self, project_path: str, timeout: int = 10) -> bool:
         """等待 Zotero 初始化完成（检测 data/zotero.sqlite）"""
         data_dir = Path(project_path) / "data"
@@ -287,7 +307,92 @@ class ZoteroController:
         except Exception as e:
             print(f"[ERROR] Failed to close Zotero: {e}")
 
-    def _create_project_native(
+    # ---------- 完整初始化模式（方案二：空 Profile + Zotero 自动补全） ----------
+    def _create_project_full(
+        self,
+        project_name: str,
+        profiles_dir: str,
+        zotero_install_dir: str,
+        create_shortcut: bool,
+        create_library_shortcut: bool
+    ) -> Tuple[bool, str, Optional[str]]:
+        """
+        完整模式创建项目（模拟手动 Profile Manager 创建）
+        
+        流程：
+        1. 创建空目录（data/ 和 profiles/）
+        2. 在 profiles.ini 中注册 Profile（指向空 profiles/ 目录）
+        3. 设置 Profile 为默认（避免 Profile Manager 弹窗）
+        4. 启动 Zotero（自动补全完整的 profiles/ 配置）
+        5. 等待初始化完成（生成 55MB 完整项目）
+        6. 关闭 Zotero
+        7. 生成快捷方式
+        """
+        name = project_name.strip()
+        project_path = Path(profiles_dir) / name
+        print(f"[DEBUG] Full mode creation (simulate Profile Manager): {project_path}")
+
+        # --- 1. 创建空目录 ---
+        try:
+            project_path.mkdir(parents=True, exist_ok=True)
+            (project_path / "data").mkdir(exist_ok=True)
+            (project_path / "profiles").mkdir(exist_ok=True)
+            print(f"[DEBUG] Created project directory: {project_path}")
+        except Exception as e:
+            return False, f"创建项目目录失败: {e}", None
+
+        profiles_dir_path = project_path / "profiles"
+        data_dir_path = project_path / "data"
+
+        # 确保 prefs.js 不存在（Zotero 会自己生成完整的 prefs.js）
+        prefs_path = profiles_dir_path / "prefs.js"
+        if prefs_path.exists():
+            try:
+                prefs_path.unlink()
+                print(f"[DEBUG] Removed existing prefs.js")
+            except Exception:
+                pass
+
+        # --- 2. 注册 Profile（指向空 profiles/ 目录）---
+        if not register_profile(name, str(profiles_dir_path)):
+            return False, "注册 Profile 失败", None
+
+        # --- 3. 设置该 Profile 为默认 ---
+        set_default_profile(name)
+        print(f"[DEBUG] Profile '{name}' registered and set as default")
+
+        # --- 4. 启动 Zotero 完成完整初始化 ---
+        exe_path = Path(zotero_install_dir) / "zotero.exe"
+        if not exe_path.exists():
+            return False, "Zotero 安装路径无效", None
+
+        print("[DEBUG] Starting Zotero for full initialization...")
+        try:
+            proc = subprocess.Popen([
+                str(exe_path),
+                "-datadir", str(data_dir_path),
+                "-P", name
+            ], shell=False)
+        except Exception as e:
+            return False, f"启动 Zotero 失败: {e}", None
+
+        # --- 5. 等待初始化完成 ---
+        if not self._wait_for_zotero_init(str(project_path)):
+            self._close_zotero(proc)
+            return False, "Zotero 初始化超时，请检查 Zotero 是否正常工作", None
+
+        # --- 6. 关闭 Zotero ---
+        self._close_zotero(proc)
+        print(f"[DEBUG] Project initialization complete with full files")
+
+        # --- 7. 生成快捷方式 ---
+        if create_library_shortcut:
+            self.create_shortcut_in_library(str(project_path), name, zotero_install_dir, profiles_dir)
+
+        return True, f"项目 '{name}' 创建成功（完整模式）", str(project_path)
+
+    # ---------- 轻量初始化模式 ----------
+    def _create_project_light(
         self,
         project_name: str,
         profiles_dir: str,
@@ -296,35 +401,40 @@ class ZoteroController:
         create_shortcut: bool,
         create_library_shortcut: bool
     ) -> Tuple[bool, str, Optional[str]]:
-        """使用 Zotero 原生生成方式创建项目（先注册 Profile，避免弹窗）"""
+        """
+        轻量模式创建项目（19MB 最小项目 + 预置语言）
+        """
         name = project_name.strip()
         project_path = Path(profiles_dir) / name
-        print(f"[DEBUG] Native creation: {project_path}")
+        print(f"[DEBUG] Light mode creation: {project_path}")
 
-        # 1. 创建项目目录和 data/、profiles/ 空目录
+        # --- 1. 创建目录并写入 prefs.js ---
         try:
             project_path.mkdir(parents=True, exist_ok=True)
             (project_path / "data").mkdir(exist_ok=True)
             (project_path / "profiles").mkdir(exist_ok=True)
-            print(f"[DEBUG] Created directories: {project_path}")
+            print(f"[DEBUG] Created project directory: {project_path}")
         except Exception as e:
             return False, f"创建项目目录失败: {e}", None
 
+        # 写入 prefs.js（含语言设置）
+        if not self._ensure_profile_structure(str(project_path), language, precreate_prefs=True):
+            return False, "写入语言设置失败", None
+
         profiles_dir_path = project_path / "profiles"
 
-        # 2. 手动注册 Profile（避免 Zotero Profile Manager 弹窗）
+        # --- 2. 注册 Profile ---
         if not register_profile(name, str(profiles_dir_path)):
             return False, "注册 Profile 失败", None
 
-        # 3. 设置该 Profile 为默认（确保后续启动不弹窗）
         set_default_profile(name)
 
-        # 4. 启动 Zotero 进行初始化
+        # --- 3. 启动 Zotero 完成最小化初始化 ---
         exe_path = Path(zotero_install_dir) / "zotero.exe"
         if not exe_path.exists():
             return False, "Zotero 安装路径无效", None
 
-        print("[DEBUG] Starting Zotero for native initialization...")
+        print("[DEBUG] Starting Zotero for light initialization...")
         try:
             proc = subprocess.Popen([
                 str(exe_path),
@@ -334,26 +444,18 @@ class ZoteroController:
         except Exception as e:
             return False, f"启动 Zotero 失败: {e}", None
 
-        # 5. 等待初始化完成（检测 zotero.sqlite）
         if not self._wait_for_zotero_init(str(project_path)):
             self._close_zotero(proc)
             return False, "Zotero 初始化超时，请检查 Zotero 是否正常工作", None
 
-        # 6. 关闭 Zotero
+        # --- 4. 关闭 Zotero ---
         self._close_zotero(proc)
 
-        # 7. 写入语言设置（此时 Zotero 已关闭，修改 prefs.js 安全）
-        if language is not None:
-            if not write_language(str(profiles_dir_path), language):
-                print("[WARNING] Failed to write language settings, continuing...")
-
-        # 8. 生成快捷方式
+        # --- 5. 生成快捷方式 ---
         if create_library_shortcut:
             self.create_shortcut_in_library(str(project_path), name, zotero_install_dir, profiles_dir)
-        if create_shortcut:
-            self.create_shortcut(str(project_path), name, zotero_install_dir)
 
-        return True, f"项目 '{name}' 创建成功（Zotero 自动生成项目文件）", str(project_path)
+        return True, f"项目 '{name}' 创建成功（轻量模式）", str(project_path)
 
     # ---------- 模板复制模式 ----------
     def _create_project_from_template(
@@ -366,33 +468,27 @@ class ZoteroController:
         create_shortcut: bool,
         create_library_shortcut: bool
     ) -> Tuple[bool, str, Optional[str]]:
-        """使用模板复制方式创建项目"""
+        """使用模板复制方式创建项目（保留原有逻辑）"""
         name = project_name.strip()
         project_path = Path(profiles_dir) / name
         print(f"[DEBUG] Template creation: {project_path} from {template_dir}")
 
-        # 1. 复制模板
         try:
             shutil.copytree(template_dir, project_path)
             print(f"[DEBUG] Template copied")
         except Exception as e:
             return False, f"复制模板失败: {e}", None
 
-        # 2. 确保 profiles 结构完整并写入语言
-        if not self._ensure_profile_structure(str(project_path), language):
+        # 确保 profiles 结构并写入语言（模板模式使用轻量方式）
+        if not self._ensure_profile_structure(str(project_path), language, precreate_prefs=True):
             return False, "创建项目配置结构失败", None
 
         profiles_subdir = project_path / "profiles"
-
-        # 3. 注册 Profile
         register_profile(name, str(profiles_subdir))
         print(f"[DEBUG] Profile registered: {name} -> {profiles_subdir}")
 
-        # 4. 生成快捷方式
         if create_library_shortcut:
             self.create_shortcut_in_library(str(project_path), name, zotero_install_dir, profiles_dir)
-        if create_shortcut:
-            self.create_shortcut(str(project_path), name, zotero_install_dir)
 
         return True, f"项目 '{name}' 创建成功（使用模板快速复制）", str(project_path)
 
@@ -407,7 +503,8 @@ class ZoteroController:
         language: str = 'zh-CN',
         create_shortcut: bool = False,
         create_library_shortcut: bool = True,
-        creation_method: Optional[str] = None
+        creation_method: Optional[str] = None,
+        profile_mode: Optional[str] = None
     ) -> Tuple[bool, str, Optional[str]]:
         """
         统一入口：根据配置和模板可用性选择创建方式
@@ -416,10 +513,15 @@ class ZoteroController:
             - "auto": 自动选择（有模板用模板，无模板用原生）
             - "template": 始终使用模板复制（无模板则报错）
             - "native": 始终使用原生生成（忽略模板）
+        
+        profile_mode:
+            - "full": 完整模式（55MB，完整功能，不预设语言）
+            - "light": 轻量模式（19MB，最小功能，预设语言）
         """
-        print(f"[DEBUG] create_project called with language={language}, creation_method={creation_method}")
+        print(f"[DEBUG] create_project called with language={language}, "
+              f"creation_method={creation_method}, profile_mode={profile_mode}")
 
-        # 1. 验证输入（基础验证）
+        # 1. 验证输入
         if not project_name or not project_name.strip():
             return False, "项目名称不能为空", None
         name = project_name.strip()
@@ -435,12 +537,17 @@ class ZoteroController:
             creation_method = self.config_mgr.get_creation_method()
         else:
             creation_method = "auto"
-
         print(f"[DEBUG] Using creation method: {creation_method}")
 
-        # 3. 根据创建方式处理模板
+        # 3. 确定完整度模式
+        if profile_mode is None and self.config_mgr:
+            profile_mode = self.config_mgr.get_config().creation_profile_mode
+        else:
+            profile_mode = "full"
+        print(f"[DEBUG] Using profile mode: {profile_mode}")
+
+        # 4. 根据创建方式处理模板
         if creation_method == "template":
-            # 始终使用模板：必须提供有效的模板目录和版本
             if not templates_root or not os.path.exists(templates_root):
                 return False, "模板目录不存在，请设置正确的模板目录", None
             if not zotero_version:
@@ -448,21 +555,25 @@ class ZoteroController:
             template_dir = self._match_template(templates_root, zotero_version)
             if not template_dir:
                 return False, f"未找到匹配 Zotero {zotero_version} 的模板。请准备模板或切换创建方式。", None
-            # 使用模板复制
             return self._create_project_from_template(
                 name, profiles_dir, template_dir, language,
                 zotero_install_dir, create_shortcut, create_library_shortcut
             )
 
         elif creation_method == "native":
-            # 始终使用原生生成：忽略模板目录和版本
-            return self._create_project_native(
-                name, profiles_dir, language,
-                zotero_install_dir, create_shortcut, create_library_shortcut
-            )
+            if profile_mode == "full":
+                # 完整模式：不传递 language
+                return self._create_project_full(
+                    name, profiles_dir,
+                    zotero_install_dir, create_shortcut, create_library_shortcut
+                )
+            else:
+                return self._create_project_light(
+                    name, profiles_dir, language,
+                    zotero_install_dir, create_shortcut, create_library_shortcut
+                )
 
         else:  # "auto"
-            # 自动选择：有模板用模板，无模板用原生（静默 fallback）
             if templates_root and os.path.exists(templates_root) and zotero_version:
                 template_dir = self._match_template(templates_root, zotero_version)
                 if template_dir:
@@ -470,8 +581,14 @@ class ZoteroController:
                         name, profiles_dir, template_dir, language,
                         zotero_install_dir, create_shortcut, create_library_shortcut
                     )
-            # 无模板或模板无效，使用原生生成（不报错）
-            return self._create_project_native(
-                name, profiles_dir, language,
-                zotero_install_dir, create_shortcut, create_library_shortcut
-            )
+            # 无模板或模板无效，使用原生生成
+            if profile_mode == "full":
+                return self._create_project_full(
+                    name, profiles_dir,
+                    zotero_install_dir, create_shortcut, create_library_shortcut
+                )
+            else:
+                return self._create_project_light(
+                    name, profiles_dir, language,
+                    zotero_install_dir, create_shortcut, create_library_shortcut
+                )

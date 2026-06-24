@@ -32,26 +32,58 @@ class Profile:
         )
 
     def get_item_count(self) -> int:
+        """
+        获取文献数量（排除附件、笔记、注释等非文献条目）
+        与 Zotero 界面显示的父条目数量一致
+        
+        排除类型名称:
+            - attachment: 附件 (PDF 等)
+            - note: 笔记
+            - annotation: 注释
+        """
         try:
             import sqlite3
             db_path = Path(self.data_path) / "zotero.sqlite"
-            if db_path.exists():
+            if not db_path.exists():
+                return -1
+
+            conn = sqlite3.connect(str(db_path))
+            cursor = conn.cursor()
+
+            # 动态查询要排除的 itemTypeID
+            # 使用子查询，从 itemTypes 表中获取需要排除的类型 ID
+            cursor.execute("""
+                SELECT COUNT(*) FROM items 
+                WHERE itemTypeID NOT IN (
+                    SELECT itemTypeID FROM itemTypes 
+                    WHERE typeName IN ('attachment', 'note', 'annotation')
+                )
+            """)
+            count = cursor.fetchone()[0]
+            conn.close()
+            return count
+        except Exception:
+            # 如果查询失败（例如 itemTypes 表不存在或结构变化），回退到统计所有记录
+            try:
+                import sqlite3
+                db_path = Path(self.data_path) / "zotero.sqlite"
+                if not db_path.exists():
+                    return -1
                 conn = sqlite3.connect(str(db_path))
                 cursor = conn.cursor()
                 cursor.execute("SELECT COUNT(*) FROM items")
                 count = cursor.fetchone()[0]
                 conn.close()
                 return count
-        except:
-            pass
-        return -1
+            except Exception:
+                return -1
 
     def get_plugin_count(self) -> int:
         try:
             ext_path = Path(self.profiles_path) / "extensions"
             if ext_path.exists():
                 return len([d for d in ext_path.iterdir() if d.is_dir()])
-        except:
+        except Exception:
             pass
         return 0
 
@@ -63,7 +95,7 @@ class Profile:
                 if f.is_file():
                     total += f.stat().st_size
             return total
-        except:
+        except Exception:
             return 0
 
     def is_valid(self) -> bool:

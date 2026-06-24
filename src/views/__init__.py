@@ -3,8 +3,8 @@
 
 from .main_window import MainWindow
 from .components import DirectoryBar, StatusBarWidget, TableWidget, ToolbarWidget
-from .dialogs import AboutDialog, DeleteConfirmDialog, DeleteFailedDialog, DeleteSuccessDialog, FirstLaunchDialog, LanguageDialog, NewProjectDialog, PreferencesDialog, ProjectInUseDialog
+from .dialogs import AboutDialog, DeleteConfirmDialog, DeleteFailedDialog, DeleteSuccessDialog, ExportDialog, FirstLaunchDialog, ImportDialog, LanguageDialog, NewProjectDialog, PreferencesDialog, ProjectInUseDialog
 from .handlers import LanguageHandler, ProjectHandler
 from .menus import MainMenu
 
-__all__ = ['MainWindow', 'DirectoryBar', 'StatusBarWidget', 'TableWidget', 'ToolbarWidget', 'AboutDialog', 'DeleteConfirmDialog', 'DeleteFailedDialog', 'DeleteSuccessDialog', 'FirstLaunchDialog', 'LanguageDialog', 'NewProjectDialog', 'PreferencesDialog', 'ProjectInUseDialog', 'LanguageHandler', 'ProjectHandler', 'MainMenu']
+__all__ = ['MainWindow', 'DirectoryBar', 'StatusBarWidget', 'TableWidget', 'ToolbarWidget', 'AboutDialog', 'DeleteConfirmDialog', 'DeleteFailedDialog', 'DeleteSuccessDialog', 'ExportDialog', 'FirstLaunchDialog', 'ImportDialog', 'LanguageDialog', 'NewProjectDialog', 'PreferencesDialog', 'ProjectInUseDialog', 'LanguageHandler', 'ProjectHandler', 'MainMenu']

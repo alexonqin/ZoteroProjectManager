@@ -40,6 +40,9 @@ class AppConfig:
     # 项目创建方式
     creation_method: str = "auto"     # "auto" | "template" | "native"
 
+    # 项目完整度模式
+    creation_profile_mode: str = "full"  # "full" | "light"
+
     # 界面设置
     window_size: Dict[str, int] = field(default_factory=lambda: {"width": 800, "height": 600})
     window_position: Dict[str, int] = field(default_factory=lambda: {"x": -1, "y": -1})
@@ -61,6 +64,7 @@ class AppConfig:
             "language": self.language,
             "default_language": self.default_language,
             "creation_method": self.creation_method,
+            "creation_profile_mode": self.creation_profile_mode,
             "window_size": self.window_size,
             "window_position": self.window_position,
             "auto_create_shortcut": self.auto_create_shortcut,
@@ -79,6 +83,7 @@ class AppConfig:
             language=data.get("language", "zh_CN"),
             default_language=data.get("default_language", "zh-CN"),
             creation_method=data.get("creation_method", "auto"),
+            creation_profile_mode=data.get("creation_profile_mode", "full"),
             window_size=data.get("window_size", {"width": 800, "height": 600}),
             window_position=data.get("window_position", {"x": -1, "y": -1}),
             auto_create_shortcut=data.get("auto_create_shortcut", True),
