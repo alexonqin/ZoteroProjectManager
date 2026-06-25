@@ -245,3 +245,56 @@ In-use detection → Warning dialog → Confirmation dialog (name input + checkb
 - Controller instantiation error in `NewProjectDialog`
 - Controller instantiation error in `PreferencesDialog`
 - Missing `table_context_menu.py` file
+
+# [0.1.5-beta] - 2026-06-25
+
+## Added
+- Creation progress dialog (120-second countdown)
+  - Friendly message displayed after project creation, guiding users to wait for initialization
+  - OK button enabled after countdown ends to prevent premature user action
+- Rename on import
+  - New "Rename project on import" checkbox
+  - Unchecked by default (restore project); checked to edit name (template cloning)
+- Real-time path validation (first-launch dialog)
+  - Auto-detects zotero.exe when Zotero path is selected
+  - Shows "Detected" or "Not found" status message
+
+## Changed
+- **Configuration model greatly simplified**:
+  - First-launch setup: 6 → 2 fields
+  - Preferences: 8+ → 2 fields
+  - Removed zotero_version, templates_root, default_language, creation_method, creation_profile_mode
+- **Project creation logic fixed**:
+  - Unified to "Native Generation + Full Mode + System Language"
+  - No longer writes prefs.js; Zotero generates it automatically
+  - Returns immediately after launching Zotero, showing progress dialog
+- **Import dialog simplified**:
+  - Removed "Auto-register Profile" and "Generate shortcuts" checkboxes (now automatic)
+  - Removed redundant hint text
+  - Conflict handling only "Auto Rename" and "Cancel" (removed dangerous "Overwrite")
+- **Export dialog simplified**:
+  - Removed "Full Backup" checkbox; always exports all files
+- **New Project dialog simplified**:
+  - Removed language dropdown (fixed to system language)
+  - Updated hint text to user-friendly version
+- **Preferences dialog simplified**:
+  - Only Zotero path and project library directory
+  - Fixed missing label text issue
+- **Status bar optimized**:
+  - Removed version number display
+  - Shows Zotero detection status
+
+## Removed
+- Project creation method selection (auto/template/native)
+- Project completeness mode selection (full/light)
+- Default language configuration for new projects
+- Template directory configuration
+- Zotero version configuration
+- "Overwrite" option in import conflict handling (safety consideration)
+
+## Fixed
+- Status bar showing "Zotero not found" after first launch
+- Missing label text in preferences dialog
+- Confusing messages like "process unexpectedly exited" during project creation
+- AttributeError calling deprecated set_zotero_version on first launch
+
