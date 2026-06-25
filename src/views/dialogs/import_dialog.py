@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-导入项目对话框
+导入项目对话框（支持重命名）
 """
 
 import os
@@ -25,8 +25,9 @@ class ImportDialog(QDialog):
         self.i18n = i18n
         self.default_dir = default_dir
 
-        self.result_path = None
-        self.result_create_shortcut = True
+        self.result_path = None          # 目标路径
+        self.result_rename = False       # 是否重命名
+        self.result_new_name = ""        # 新名称
 
         self._zip_info = None
         self._setup_ui()
@@ -35,7 +36,7 @@ class ImportDialog(QDialog):
     def _setup_ui(self):
         self.setModal(True)
         self.setFixedWidth(550)
-        self.setFixedHeight(370)
+        self.setFixedHeight(280)
 
         layout = QVBoxLayout(self)
         layout.setSpacing(12)
@@ -66,38 +67,23 @@ class ImportDialog(QDialog):
         file_layout.addWidget(self.browse_btn)
         layout.addLayout(file_layout)
 
-        # 项目信息预览
-        self.preview_label = QLabel()
-        self.preview_label.setWordWrap(True)
-        self.preview_label.setStyleSheet("color: #444; font-size: 11px; padding: 6px; background-color: #f5f5f5; border-radius: 3px;")
-        layout.addWidget(self.preview_label)
+        # 项目名称
+        name_layout = QHBoxLayout()
+        self.name_label = QLabel()
+        self.name_label.setMinimumWidth(80)
+        name_layout.addWidget(self.name_label)
 
-        # 目标位置
-        target_layout = QHBoxLayout()
-        self.target_label = QLabel()
-        self.target_label.setMinimumWidth(80)
-        target_layout.addWidget(self.target_label)
+        self.name_edit = QLineEdit()
+        self.name_edit.setReadOnly(True)
+        self.name_edit.setStyleSheet("background-color: #f5f5f5;")
+        name_layout.addWidget(self.name_edit, 1)
+        layout.addLayout(name_layout)
 
-        self.target_edit = QLineEdit()
-        self.target_edit.setReadOnly(True)
-        self.target_edit.setStyleSheet("background-color: #f5f5f5;")
-        target_layout.addWidget(self.target_edit, 1)
-        layout.addLayout(target_layout)
-
-        line2 = QFrame()
-        line2.setFrameShape(QFrame.HLine)
-        line2.setFrameShadow(QFrame.Sunken)
-        layout.addWidget(line2)
-
-        # 选项：仅项目库快捷方式（不再包含桌面）
-        self.shortcut_cb = QCheckBox()
-        self.shortcut_cb.setChecked(True)
-        layout.addWidget(self.shortcut_cb)
-
-        self.hint_label = QLabel()
-        self.hint_label.setWordWrap(True)
-        self.hint_label.setStyleSheet("color: #888; font-size: 10px;")
-        layout.addWidget(self.hint_label)
+        # 重命名复选框
+        self.rename_cb = QCheckBox()
+        self.rename_cb.setChecked(False)
+        self.rename_cb.stateChanged.connect(self._on_rename_toggle)
+        layout.addWidget(self.rename_cb)
 
         layout.addStretch()
 
@@ -135,10 +121,8 @@ class ImportDialog(QDialog):
         self.title_label.setText(self.i18n.tr("import_title"))
         self.file_label.setText(self.i18n.tr("import_select_file"))
         self.browse_btn.setText(self.i18n.tr("btn_browse"))
-        self.target_label.setText(self.i18n.tr("import_target_location"))
-        # 修改复选框文本，仅提及项目库快捷方式
-        self.shortcut_cb.setText(self.i18n.tr("import_create_library_shortcut"))
-        self.hint_label.setText("💡 " + self.i18n.tr("import_hint"))
+        self.name_label.setText(self.i18n.tr("import_project_name"))
+        self.rename_cb.setText(self.i18n.tr("import_rename_project"))
         self.import_btn.setText(self.i18n.tr("import_btn_import"))
         self.cancel_btn.setText(self.i18n.tr("pref_btn_cancel"))
 
@@ -164,8 +148,7 @@ class ImportDialog(QDialog):
                         top_level.add(parts[0])
                 if len(top_level) != 1:
                     QMessageBox.warning(self, "", self.i18n.tr("import_error_invalid"))
-                    self.preview_label.setText("")
-                    self.target_edit.setText("")
+                    self.name_edit.setText("")
                     self.import_btn.setEnabled(False)
                     return
 
@@ -176,84 +159,71 @@ class ImportDialog(QDialog):
 
                 if not (has_data and has_profiles and has_sqlite):
                     QMessageBox.warning(self, "", self.i18n.tr("import_error_invalid"))
-                    self.preview_label.setText("")
-                    self.target_edit.setText("")
+                    self.name_edit.setText("")
                     self.import_btn.setEnabled(False)
                     return
 
-                # 解析语言
-                language = "zh-CN"
-                try:
-                    prefs_path = f"{project_folder}/profiles/prefs.js"
-                    if prefs_path in all_names:
-                        with zf.open(prefs_path) as f:
-                            content = f.read().decode('utf-8')
-                            import re
-                            match = re.search(r'user_pref\s*\(\s*"intl\.locale\.requested"\s*,\s*"([^"]*)"\s*\)', content)
-                            if match:
-                                language = match.group(1)
-                except:
-                    pass
-
-                total_size = 0
-                for info in zf.filelist:
-                    if not info.is_dir():
-                        total_size += info.file_size
-
+                # 保存项目信息
                 self._zip_info = {
                     'project_name': project_folder,
-                    'size_mb': total_size / (1024 * 1024),
-                    'language': language,
                 }
 
-                size_mb = self._zip_info['size_mb']
-                self.preview_label.setText(
-                    f"{self.i18n.tr('import_project_name')} {project_folder}\n"
-                    f"{self.i18n.tr('import_project_size')} {size_mb:.1f} MB\n"
-                    f"{self.i18n.tr('import_language')} {language}"
-                )
-
-                target_path = Path(self.default_dir) / project_folder
-                self.target_edit.setText(str(target_path))
-
-                if target_path.exists():
-                    self.preview_label.setText(
-                        self.preview_label.text() + f"\n⚠️ {self.i18n.tr('import_conflict_detected')}"
-                    )
-
+                self.name_edit.setText(project_folder)
                 self.import_btn.setEnabled(True)
 
         except zipfile.BadZipFile:
             QMessageBox.warning(self, "", self.i18n.tr("import_error_invalid"))
             self.import_btn.setEnabled(False)
 
+    def _on_rename_toggle(self, state):
+        if state == Qt.Checked:
+            self.name_edit.setReadOnly(False)
+            self.name_edit.setStyleSheet("background-color: white;")
+            self.name_edit.setFocus()
+            self.name_edit.selectAll()
+        else:
+            self.name_edit.setReadOnly(True)
+            self.name_edit.setStyleSheet("background-color: #f5f5f5;")
+            # 恢复原名称
+            if self._zip_info:
+                self.name_edit.setText(self._zip_info['project_name'])
+
     def _on_import(self):
         if not self._zip_info:
             QMessageBox.warning(self, "", self.i18n.tr("import_error_no_info"))
             return
 
-        project_name = self._zip_info['project_name']
+        project_name = self.name_edit.text().strip()
+        if not project_name:
+            QMessageBox.warning(self, "", "项目名称不能为空")
+            return
+
         target_path = Path(self.default_dir) / project_name
 
+        # 检测冲突
         if target_path.exists():
+            # 弹出冲突处理对话框
             reply = QMessageBox.question(
                 self,
                 self.i18n.tr("import_conflict_title"),
                 self.i18n.tr("import_conflict_message").format(name=project_name),
-                QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel
+                QMessageBox.Yes | QMessageBox.Cancel,
+                QMessageBox.Yes
             )
             if reply == QMessageBox.Cancel:
                 return
-            elif reply == QMessageBox.Yes:
-                counter = 1
+            # 用户选择 Yes = 自动重命名
+            counter = 1
+            new_name = f"{project_name}_{counter}"
+            while (Path(self.default_dir) / new_name).exists():
+                counter += 1
                 new_name = f"{project_name}_{counter}"
-                while (Path(self.default_dir) / new_name).exists():
-                    counter += 1
-                    new_name = f"{project_name}_{counter}"
-                project_name = new_name
-                target_path = Path(self.default_dir) / project_name
-                self.target_edit.setText(str(target_path))
+            project_name = new_name
+            target_path = Path(self.default_dir) / project_name
+            # 更新界面上的名称
+            self.name_edit.setText(project_name)
 
         self.result_path = str(target_path)
-        self.result_create_shortcut = self.shortcut_cb.isChecked()
+        self.result_rename = self.rename_cb.isChecked()
+        self.result_new_name = project_name
         self.accept()

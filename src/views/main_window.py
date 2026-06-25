@@ -92,7 +92,7 @@ class MainWindow(QMainWindow):
         self.table.delete_requested.connect(self.project_handler.on_delete_project)
         self.table.change_language_requested.connect(self.language_handler.on_change_project_language)
         self.table.export_requested.connect(self.project_handler.on_export_project)
-        self.table.rename_requested.connect(self.project_handler.on_rename_project)  # 新增
+        self.table.rename_requested.connect(self.project_handler.on_rename_project)
 
         # 菜单
         self.menu.new_triggered.connect(self.project_handler.on_new_project)
@@ -101,7 +101,7 @@ class MainWindow(QMainWindow):
         self.menu.open_folder_triggered.connect(self._on_menu_open_folder)
         self.menu.export_triggered.connect(self._on_menu_export)
         self.menu.exit_triggered.connect(self.close)
-        self.menu.rename_triggered.connect(self._on_menu_rename)  # 新增
+        self.menu.rename_triggered.connect(self._on_menu_rename)
         self.menu.delete_triggered.connect(self._on_menu_delete)
         self.menu.preferences_triggered.connect(self._on_preferences)
         self.menu.about_triggered.connect(self._on_about)
@@ -146,15 +146,14 @@ class MainWindow(QMainWindow):
         dialog = FirstLaunchDialog(self.i18n, self)
         if dialog.exec_() == QDialog.Accepted:
             cfg = dialog.result_config
-            self.config_mgr.set_zotero_version(cfg["zotero_version"])
             self.config_mgr.set_zotero_install_dir(cfg["zotero_install_dir"])
-            self.config_mgr.set_templates_root(cfg["templates_root"])
             self.config_mgr.set_profiles_current(cfg["profiles_current"])
             self.config_mgr.set_profiles_default(cfg["profiles_default"])
-            self.config_mgr.set_creation_method(cfg["creation_method"])
             self.current_dir = cfg["profiles_current"]
             self.directory_bar.set_current_dir(self.current_dir)
             self.config_mgr.add_to_history(self.current_dir)
+            # 更新状态栏
+            self._update_status()
         else:
             QTimer.singleShot(0, self.close)
 
@@ -166,13 +165,26 @@ class MainWindow(QMainWindow):
             self.project_handler.on_refresh()
         else:
             self.table.setRowCount(0)
-            self._update_status()
+        # 更新状态栏（包括 Zotero 检测状态）
+        self._update_status()
 
     def _update_status(self):
+        """更新状态栏信息"""
         profiles = self.table.profiles if hasattr(self.table, 'profiles') else []
         count = len(profiles)
-        version = self.config.zotero_version
-        self.status_bar_widget.update_info(count, version)
+
+        # 检测 Zotero 是否可用
+        install_dir = self.config_mgr.get_zotero_install_dir()
+        if install_dir and is_valid_directory(install_dir):
+            exe_path = Path(install_dir) / "zotero.exe"
+            if exe_path.exists():
+                zotero_status = self.i18n.tr("status_zotero_found")
+            else:
+                zotero_status = self.i18n.tr("status_zotero_not_found")
+        else:
+            zotero_status = self.i18n.tr("status_zotero_not_found")
+
+        self.status_bar_widget.update_info(count, zotero_status)
 
     def _on_default_set(self, path: str):
         self.config_mgr.set_profiles_default(path)
@@ -203,7 +215,7 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "", "请先选择一个项目。")
 
     def _on_preferences(self):
-        dialog = PreferencesDialog(self.i18n, self.config_mgr, self.controller, self)  # 传入 controller
+        dialog = PreferencesDialog(self.i18n, self.config_mgr, self.controller, self)
         if dialog.exec_() == QDialog.Accepted:
             self._on_refresh()
             self.retranslate_ui()

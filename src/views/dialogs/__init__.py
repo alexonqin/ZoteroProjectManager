@@ -2,6 +2,7 @@
 # 该文件由 gen_init.py 自动生成，请勿手动编辑
 
 from .about_dialog import AboutDialog
+from .creation_progress_dialog import CreationProgressDialog
 from .delete_confirm_dialog import DeleteConfirmDialog
 from .delete_failed_dialog import DeleteFailedDialog
 from .delete_success_dialog import DeleteSuccessDialog
@@ -15,4 +16,4 @@ from .project_in_use_dialog import ProjectInUseDialog
 from .rename_dialog import RenameDialog
 from .table_context_menu import TableContextMenu
 
-__all__ = ['AboutDialog', 'DeleteConfirmDialog', 'DeleteFailedDialog', 'DeleteSuccessDialog', 'ExportDialog', 'FirstLaunchDialog', 'ImportDialog', 'LanguageDialog', 'NewProjectDialog', 'PreferencesDialog', 'ProjectInUseDialog', 'RenameDialog', 'TableContextMenu']
+__all__ = ['AboutDialog', 'CreationProgressDialog', 'DeleteConfirmDialog', 'DeleteFailedDialog', 'DeleteSuccessDialog', 'ExportDialog', 'FirstLaunchDialog', 'ImportDialog', 'LanguageDialog', 'NewProjectDialog', 'PreferencesDialog', 'ProjectInUseDialog', 'RenameDialog', 'TableContextMenu']

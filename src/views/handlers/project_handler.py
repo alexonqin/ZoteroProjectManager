@@ -9,6 +9,7 @@ import zipfile
 from pathlib import Path
 
 from PySide6.QtWidgets import QMessageBox, QDialog, QProgressDialog
+from PySide6.QtWidgets import QApplication
 from PySide6.QtCore import Qt
 
 from models.profile import Profile
@@ -22,7 +23,9 @@ from views.dialogs import (
     ProjectInUseDialog,
     DeleteSuccessDialog,
     DeleteFailedDialog,
-    RenameDialog
+    RenameDialog,
+    ImportDialog,
+    ExportDialog
 )
 from utils.profile_registry import register_profile
 
@@ -49,29 +52,29 @@ class ProjectHandler:
     def on_new_project(self):
         dialog = NewProjectDialog(self.i18n, self.config, self.controller, self.parent)
         if dialog.exec_() == QDialog.Accepted and dialog.result_data:
-            name, location, language = dialog.result_data
+            name, location = dialog.result_data
+
+            # 执行创建（不等待，立即返回）
             success, msg, project_path = self.controller.create_project(
                 project_name=name,
                 profiles_dir=location,
-                templates_root=self.config.templates_root,
-                zotero_version=self.config.zotero_version,
                 zotero_install_dir=self.config.zotero_install_dir,
-                language=language,
-                creation_method=self.config.creation_method,
-                profile_mode=self.config.creation_profile_mode
+                create_library_shortcut=True
             )
+
             if success:
-                # 检测是否为后台初始化消息（包含关键词）
-                if "后台初始化" in msg or "background" in msg.lower():
-                    QMessageBox.information(self.parent, self.i18n.tr("project_creating_title"), msg)
-                else:
-                    QMessageBox.information(self.parent, "", f"✅ {msg}")
+                # 无论是否初始化完成，都显示倒计时对话框
+                from views.dialogs.creation_progress_dialog import CreationProgressDialog
+                progress_dialog = CreationProgressDialog(self.i18n, name, self.parent)
+                # 执行 exec_() 会阻塞，直到用户点击 OK（120秒后）
+                progress_dialog.exec_()
+
+                # 用户点击 OK 后，刷新界面
                 self.config_mgr.set_profiles_current(location)
                 self.config_mgr.add_to_history(location)
                 self.on_refresh()
             else:
                 QMessageBox.critical(self.parent, "", msg)
-
 
     def on_refresh(self):
         current_dir = self.config_mgr.get_profiles_current()
@@ -141,7 +144,7 @@ class ProjectHandler:
     def _update_status_bar(self, profiles):
         if hasattr(self.parent, 'status_bar_widget'):
             count = len(profiles)
-            version = self.config.zotero_version
+            version = ""  # 不再显示版本
             self.parent.status_bar_widget.update_info(count, version)
 
     # ---------- 重命名 ----------
@@ -170,27 +173,17 @@ class ProjectHandler:
 
     # ---------- 导入导出 ----------
     def on_export_project(self, profile: Profile):
-        from views.dialogs.export_dialog import ExportDialog
         current_dir = self.config_mgr.get_profiles_current()
         dialog = ExportDialog(self.i18n, profile, current_dir, self.parent)
         if dialog.exec_() == QDialog.Accepted:
             zip_path = dialog.result_path
-            full_backup = dialog.result_full_backup
-            self._do_export(profile, zip_path, full_backup)
+            self._do_export(profile, zip_path)
             if dialog.result_open_folder:
                 os.startfile(Path(zip_path).parent)
 
-    def _do_export(self, profile: Profile, zip_path: str, full_backup: bool = True):
-        """执行导出，full_backup=True 时打包全部文件（不排除任何文件）"""
+    def _do_export(self, profile: Profile, zip_path: str):
+        """导出全部文件，无排除"""
         try:
-            # 若非完整备份，则排除特定文件和目录
-            if not full_backup:
-                exclude_extensions = {'.lnk', '.log'}
-                exclude_dirs = {'cache2', 'startupCache', 'shader-cache'}
-            else:
-                exclude_extensions = set()
-                exclude_dirs = set()
-
             progress = QProgressDialog(
                 self.i18n.tr("export_progress"),
                 self.i18n.tr("pref_btn_cancel"),
@@ -203,11 +196,6 @@ class ProjectHandler:
                 project_root = Path(profile.project_path)
                 for file_path in project_root.rglob('*'):
                     if file_path.is_file():
-                        # 跳过排除项（仅当 full_backup=False）
-                        if file_path.suffix in exclude_extensions:
-                            continue
-                        if any(d in file_path.parent.parts for d in exclude_dirs):
-                            continue
                         arcname = file_path.relative_to(project_root.parent)
                         zf.write(file_path, arcname)
 
@@ -225,16 +213,14 @@ class ProjectHandler:
             )
 
     def on_import_project(self):
-        from views.dialogs.import_dialog import ImportDialog
         current_dir = self.config_mgr.get_profiles_current()
         dialog = ImportDialog(self.i18n, current_dir, self.parent)
         if dialog.exec_() == QDialog.Accepted:
             zip_path = dialog.file_edit.text()
             target_path = dialog.result_path
-            create_shortcut = dialog.result_create_shortcut
-            self._do_import(zip_path, target_path, create_shortcut)
+            self._do_import(zip_path, target_path)
 
-    def _do_import(self, zip_path: str, target_path: str, create_shortcut: bool):
+    def _do_import(self, zip_path: str, target_path: str):
         try:
             progress = QProgressDialog(
                 self.i18n.tr("import_progress"),
@@ -254,13 +240,13 @@ class ProjectHandler:
             profiles_subdir = Path(target_path) / "profiles"
             register_profile(project_name, str(profiles_subdir))
 
-            if create_shortcut:
-                self.controller.create_shortcut_in_library(
-                    str(target_path),
-                    project_name,
-                    self.config.zotero_install_dir,
-                    str(target_dir)
-                )
+            # 自动生成项目库快捷方式
+            self.controller.create_shortcut_in_library(
+                str(target_path),
+                project_name,
+                self.config.zotero_install_dir,
+                str(target_dir)
+            )
 
             progress.close()
             QMessageBox.information(

@@ -5,7 +5,7 @@
 
 import json
 from pathlib import Path
-from typing import List, Optional
+from typing import List
 
 from models.config import AppConfig
 
@@ -37,39 +37,32 @@ class ConfigManager:
     def get_config(self) -> AppConfig:
         return self._config
 
-    # ---------- 便捷方法 ----------
-    def get_zotero_version(self) -> str:
-        return self._config.zotero_version
-    def set_zotero_version(self, v: str):
-        self._config.zotero_version = v
-        self.save()
-
+    # ---------- Zotero 安装路径 ----------
     def get_zotero_install_dir(self) -> str:
         return self._config.zotero_install_dir
+
     def set_zotero_install_dir(self, path: str):
         self._config.zotero_install_dir = path
         self.save()
 
-    def get_templates_root(self) -> str:
-        return self._config.templates_root
-    def set_templates_root(self, path: str):
-        self._config.templates_root = path
-        self.save()
-
+    # ---------- 项目库路径 ----------
     def get_profiles_current(self) -> str:
         return self._config.profiles_current
+
     def set_profiles_current(self, path: str):
         self._config.profiles_current = path
         self.save()
 
     def get_profiles_default(self) -> str:
         return self._config.profiles_default
+
     def set_profiles_default(self, path: str):
         self._config.profiles_default = path
         self.save()
 
     def get_profiles_history(self) -> List[str]:
         return self._config.profiles_history
+
     def add_to_history(self, path: str):
         history = self._config.profiles_history
         if path in history:
@@ -79,28 +72,19 @@ class ConfigManager:
             history = history[:20]
         self.save()
 
+    # ---------- ZPL 界面语言 ----------
     def get_language(self) -> str:
         return self._config.language
+
     def set_language(self, lang: str):
         self._config.language = lang
         self.save()
 
-    def get_default_language(self) -> str:
-        return self._config.default_language
-    def set_default_language(self, lang: str):
-        self._config.default_language = lang
-        self.save()
-
-    def get_creation_method(self) -> str:
-        return self._config.creation_method
-    def set_creation_method(self, method: str):
-        if method in ["auto", "template", "native"]:
-            self._config.creation_method = method
-            self.save()
-
+    # ---------- 窗口状态 ----------
     def get_window_size(self) -> tuple:
         return (self._config.window_size.get("width", 800),
                 self._config.window_size.get("height", 600))
+
     def set_window_size(self, w: int, h: int):
         self._config.window_size = {"width": w, "height": h}
         self.save()
@@ -108,14 +92,15 @@ class ConfigManager:
     def get_window_position(self) -> tuple:
         return (self._config.window_position.get("x", -1),
                 self._config.window_position.get("y", -1))
+
     def set_window_position(self, x: int, y: int):
         self._config.window_position = {"x": x, "y": y}
         self.save()
 
-    # 移除 get_auto_create_shortcut / set_auto_create_shortcut
-
+    # ---------- 项目备注 ----------
     def get_project_note(self, project_name: str) -> str:
         return self._config.project_notes.get(project_name, "")
+
     def set_project_note(self, project_name: str, note: str):
         self._config.project_notes[project_name] = note
         self.save()
