@@ -7,7 +7,8 @@ from pathlib import Path
 
 from PySide6.QtWidgets import QDialog, QMessageBox
 
-from controllers.zotero_controller import ZoteroController
+
+from controllers import ZoteroController
 from utils.i18n import I18n
 from utils.config_manager import ConfigManager
 from views.components.table_widget import TableWidget

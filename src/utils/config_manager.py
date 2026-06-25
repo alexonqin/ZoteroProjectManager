@@ -112,11 +112,7 @@ class ConfigManager:
         self._config.window_position = {"x": x, "y": y}
         self.save()
 
-    def get_auto_create_shortcut(self) -> bool:
-        return self._config.auto_create_shortcut
-    def set_auto_create_shortcut(self, val: bool):
-        self._config.auto_create_shortcut = val
-        self.save()
+    # 移除 get_auto_create_shortcut / set_auto_create_shortcut
 
     def get_project_note(self, project_name: str) -> str:
         return self._config.project_notes.get(project_name, "")
@@ -127,4 +123,11 @@ class ConfigManager:
     def remove_project_note(self, project_name: str):
         if project_name in self._config.project_notes:
             del self._config.project_notes[project_name]
+            self.save()
+
+    def rename_project_note(self, old_name: str, new_name: str):
+        """将备注键从旧名称迁移到新名称"""
+        notes = self._config.project_notes
+        if old_name in notes:
+            notes[new_name] = notes.pop(old_name)
             self.save()

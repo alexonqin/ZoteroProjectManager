@@ -13,15 +13,15 @@ from pathlib import Path
 
 from utils.i18n import I18n
 from utils.path_utils import is_valid_directory
-from controllers.zotero_controller import ZoteroController
+from controllers import ZoteroController   # 仅用于类型提示，不实例化
 
 
 class NewProjectDialog(QDialog):
-    def __init__(self, i18n: I18n, config, parent=None):
+    def __init__(self, i18n: I18n, config, controller: ZoteroController, parent=None):
         super().__init__(parent)
         self.i18n = i18n
         self.config = config
-        self.controller = ZoteroController()
+        self.controller = controller  # 使用外部传入的控制器
 
         self.result_data = None  # (name, location, language)
 
@@ -101,8 +101,6 @@ class NewProjectDialog(QDialog):
         line2.setFrameShape(QFrame.HLine)
         line2.setFrameShadow(QFrame.Sunken)
         layout.addWidget(line2)
-
-        # 桌面快捷方式复选框已移除
 
         layout.addStretch()
 

@@ -12,5 +12,7 @@ from .language_dialog import LanguageDialog
 from .new_project_dialog import NewProjectDialog
 from .preferences_dialog import PreferencesDialog
 from .project_in_use_dialog import ProjectInUseDialog
+from .rename_dialog import RenameDialog
+from .table_context_menu import TableContextMenu
 
-__all__ = ['AboutDialog', 'DeleteConfirmDialog', 'DeleteFailedDialog', 'DeleteSuccessDialog', 'ExportDialog', 'FirstLaunchDialog', 'ImportDialog', 'LanguageDialog', 'NewProjectDialog', 'PreferencesDialog', 'ProjectInUseDialog']
+__all__ = ['AboutDialog', 'DeleteConfirmDialog', 'DeleteFailedDialog', 'DeleteSuccessDialog', 'ExportDialog', 'FirstLaunchDialog', 'ImportDialog', 'LanguageDialog', 'NewProjectDialog', 'PreferencesDialog', 'ProjectInUseDialog', 'RenameDialog', 'TableContextMenu']

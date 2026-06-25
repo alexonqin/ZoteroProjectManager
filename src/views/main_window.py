@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """
 主窗口 - 组装器
-组合所有组件，建立信号-槽连接，不包含业务逻辑
 """
 
 from pathlib import Path
@@ -12,7 +11,7 @@ from PySide6.QtCore import Qt, QTimer
 from models.config import APP_NAME, APP_VERSION
 from models.profile import Profile
 
-from controllers.zotero_controller import ZoteroController
+from controllers import ZoteroController
 from utils.i18n import I18n
 from utils.config_manager import ConfigManager
 from utils.path_utils import is_valid_directory
@@ -28,8 +27,6 @@ from views.dialogs import (
 
 
 class MainWindow(QMainWindow):
-    """主窗口"""
-
     def __init__(self, i18n: I18n, config_mgr: ConfigManager):
         super().__init__()
         self.i18n = i18n
@@ -55,23 +52,18 @@ class MainWindow(QMainWindow):
         main_layout.setSpacing(8)
         main_layout.setContentsMargins(10, 10, 10, 10)
 
-        # 工具栏
         self.toolbar = ToolbarWidget(self.i18n, self)
         main_layout.addWidget(self.toolbar)
 
-        # 目录选择条
         self.directory_bar = DirectoryBar(self.i18n, self.config_mgr, self)
         main_layout.addWidget(self.directory_bar)
 
-        # 项目表格
         self.table = TableWidget(self.i18n, self)
         main_layout.addWidget(self.table)
 
-        # 状态栏
         self.status_bar_widget = StatusBarWidget(self.i18n, self)
         self.setStatusBar(self.status_bar_widget)
 
-        # 菜单栏
         self.menu = MainMenu(self.i18n, self)
         self.setMenuBar(self.menu)
 
@@ -94,20 +86,22 @@ class MainWindow(QMainWindow):
         self.directory_bar.directory_changed.connect(self.project_handler.on_directory_changed)
         self.directory_bar.default_set.connect(self._on_default_set)
 
-        # 表格（移除 create_shortcut_requested 连接）
+        # 表格
         self.table.launch_requested.connect(self.project_handler.on_launch_project)
         self.table.open_folder_requested.connect(self.project_handler.on_open_folder)
         self.table.delete_requested.connect(self.project_handler.on_delete_project)
         self.table.change_language_requested.connect(self.language_handler.on_change_project_language)
         self.table.export_requested.connect(self.project_handler.on_export_project)
+        self.table.rename_requested.connect(self.project_handler.on_rename_project)  # 新增
 
-        # 菜单（移除 shortcut_triggered 连接）
+        # 菜单
         self.menu.new_triggered.connect(self.project_handler.on_new_project)
         self.menu.import_triggered.connect(self.project_handler.on_import_project)
         self.menu.refresh_triggered.connect(self._on_refresh)
         self.menu.open_folder_triggered.connect(self._on_menu_open_folder)
         self.menu.export_triggered.connect(self._on_menu_export)
         self.menu.exit_triggered.connect(self.close)
+        self.menu.rename_triggered.connect(self._on_menu_rename)  # 新增
         self.menu.delete_triggered.connect(self._on_menu_delete)
         self.menu.preferences_triggered.connect(self._on_preferences)
         self.menu.about_triggered.connect(self._on_about)
@@ -201,10 +195,15 @@ class MainWindow(QMainWindow):
         else:
             QMessageBox.warning(self, "", self.i18n.tr("export_no_selection"))
 
-    # 移除 _on_menu_create_shortcut 方法
+    def _on_menu_rename(self):
+        profile = self.table.get_selected_profile()
+        if profile:
+            self.project_handler.on_rename_project(profile)
+        else:
+            QMessageBox.warning(self, "", "请先选择一个项目。")
 
     def _on_preferences(self):
-        dialog = PreferencesDialog(self.i18n, self.config_mgr, self)
+        dialog = PreferencesDialog(self.i18n, self.config_mgr, self.controller, self)  # 传入 controller
         if dialog.exec_() == QDialog.Accepted:
             self._on_refresh()
             self.retranslate_ui()

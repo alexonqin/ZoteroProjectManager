@@ -17,16 +17,16 @@ from PySide6.QtCore import Qt
 from utils.i18n import I18n
 from utils.config_manager import ConfigManager
 from utils.path_utils import is_valid_directory
-from controllers.zotero_controller import ZoteroController
+from controllers import ZoteroController
 
 
 class PreferencesDialog(QDialog):
-    def __init__(self, i18n: I18n, config_mgr: ConfigManager, parent=None):
+    def __init__(self, i18n: I18n, config_mgr: ConfigManager, controller: ZoteroController, parent=None):
         super().__init__(parent)
         self.i18n = i18n
         self.config_mgr = config_mgr
         self.config = config_mgr.get_config()
-        self.controller = ZoteroController()
+        self.controller = controller  # 使用外部传入的控制器
 
         self._setup_ui()
         self.retranslate_ui()
@@ -462,7 +462,6 @@ class PreferencesDialog(QDialog):
                 QMessageBox.warning(self, "", "使用模板模式需要设置模板目录")
                 return
 
-        # 获取完整度模式
         profile_mode = "full" if self.profile_mode_full.isChecked() else "light"
 
         self.config.zotero_version = version

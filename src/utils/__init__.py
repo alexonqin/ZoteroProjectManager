@@ -5,7 +5,7 @@ from .config_manager import ConfigManager
 from .i18n import I18n
 from .language_utils import get_prefs_path, read_language, write_language, get_display_language
 from .path_utils import get_desktop_path, normalize_path, is_valid_directory, ensure_directory
-from .profile_registry import get_profiles_ini_path, read_profiles, find_profile, register_profile, unregister_profile, set_default_profile
+from .profile_registry import get_profiles_ini_path, read_profiles, find_profile, register_profile, unregister_profile, set_default_profile, update_profile_name
 from .recycle_bin import move_to_recycle_bin, is_recycle_bin_available
 
-__all__ = ['ConfigManager', 'I18n', 'get_prefs_path', 'read_language', 'write_language', 'get_display_language', 'get_desktop_path', 'normalize_path', 'is_valid_directory', 'ensure_directory', 'get_profiles_ini_path', 'read_profiles', 'find_profile', 'register_profile', 'unregister_profile', 'set_default_profile', 'move_to_recycle_bin', 'is_recycle_bin_available']
+__all__ = ['ConfigManager', 'I18n', 'get_prefs_path', 'read_language', 'write_language', 'get_display_language', 'get_desktop_path', 'normalize_path', 'is_valid_directory', 'ensure_directory', 'get_profiles_ini_path', 'read_profiles', 'find_profile', 'register_profile', 'unregister_profile', 'set_default_profile', 'update_profile_name', 'move_to_recycle_bin', 'is_recycle_bin_available']

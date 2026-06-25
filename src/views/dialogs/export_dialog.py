@@ -28,6 +28,7 @@ class ExportDialog(QDialog):
 
         self.result_path = None
         self.result_open_folder = False
+        self.result_full_backup = True   # 默认完整备份
 
         self._setup_ui()
         self.retranslate_ui()
@@ -36,7 +37,7 @@ class ExportDialog(QDialog):
     def _setup_ui(self):
         self.setModal(True)
         self.setFixedWidth(520)
-        self.setFixedHeight(350)
+        self.setFixedHeight(390)
 
         layout = QVBoxLayout(self)
         layout.setSpacing(12)
@@ -79,7 +80,13 @@ class ExportDialog(QDialog):
         self.hint_label.setStyleSheet("color: #888; font-size: 10px;")
         layout.addWidget(self.hint_label)
 
-        # 选项
+        # 选项：完整备份（默认勾选）
+        self.full_backup_cb = QCheckBox()
+        self.full_backup_cb.setChecked(True)
+        self.full_backup_cb.stateChanged.connect(self._update_hint)
+        layout.addWidget(self.full_backup_cb)
+
+        # 选项：导出后打开文件夹
         self.open_folder_cb = QCheckBox()
         layout.addWidget(self.open_folder_cb)
 
@@ -116,11 +123,19 @@ class ExportDialog(QDialog):
         self.path_label.setText(self.i18n.tr("export_save_location"))
         self.browse_btn.setText(self.i18n.tr("btn_browse"))
         self.hint_label.setText("💡 " + self.i18n.tr("export_hint"))
+        self.full_backup_cb.setText(self.i18n.tr("export_full_backup"))
         self.open_folder_cb.setText(self.i18n.tr("export_open_folder"))
         self.export_btn.setText(self.i18n.tr("export_btn_export"))
         self.cancel_btn.setText(self.i18n.tr("pref_btn_cancel"))
 
         self._update_preview()
+        self._update_hint()
+
+    def _update_hint(self):
+        if self.full_backup_cb.isChecked():
+            self.hint_label.setText("💡 " + self.i18n.tr("export_full_backup_hint"))
+        else:
+            self.hint_label.setText("💡 " + self.i18n.tr("export_hint"))
 
     def _update_preview(self):
         size_mb = self.profile.get_size() / (1024 * 1024)
@@ -131,7 +146,6 @@ class ExportDialog(QDialog):
             f"{self.i18n.tr('export_item_count')} {item_count if item_count >= 0 else '?'}"
         )
 
-        # 设置默认保存路径
         if not self.path_edit.text():
             from datetime import datetime
             now = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -156,7 +170,6 @@ class ExportDialog(QDialog):
             QMessageBox.warning(self, "", self.i18n.tr("export_error_no_path"))
             return
 
-        # 检查目标目录是否存在
         target_dir = Path(path).parent
         if not target_dir.exists():
             QMessageBox.warning(self, "", self.i18n.tr("export_error_dir_not_exist"))
@@ -164,6 +177,5 @@ class ExportDialog(QDialog):
 
         self.result_path = path
         self.result_open_folder = self.open_folder_cb.isChecked()
+        self.result_full_backup = self.full_backup_cb.isChecked()
         self.accept()
-
-
