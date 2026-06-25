@@ -211,3 +211,37 @@ In-use detection → Warning dialog → Confirmation dialog (name input + checkb
 - Launch button alignment in table rows (was top-aligned, now center-aligned)
 - Launch button starting wrong project after sorting
 
+
+# [0.1.4-beta] - 2026-06-25
+
+## Added
+- Project rename functionality (right-click / F2 shortcut)
+  - Atomic operation: syncs folder, profiles.ini, shortcuts, notes
+  - In-use detection and automatic rollback
+- Export full backup option (default: include all files)
+- Creation mode debug logs (Full/Light/Template)
+- `gen_init.py` auto-generates controller composite class (added `generate_controller_init` function)
+
+## Changed
+- Controller layer fully refactored (5 Mixin modules: base/creator/launcher/shortcut/manager)
+- Unified import: `from controllers import ZoteroController`
+- `NewProjectDialog` and `PreferencesDialog` now accept controller as external parameter
+- First-launch project creation no longer waits for initialization
+- Added project creation prompt translation keys to `languages.json`
+- Fixed `manager.py` rename path error (now points to profiles subdirectory)
+
+## Removed
+- Completely removed desktop shortcuts
+  - Removed "Create Desktop Shortcut" from new project flow
+  - Removed "Create Desktop Shortcut" from right-click and main menus
+  - Removed related Preferences configuration (`auto_create_shortcut`)
+- Deleted `zotero_controller.py` (split into modules)
+
+## Fixed
+- Project configuration loss after rename (`profiles.ini` path error)
+- Controller MRO conflict (TypeError: Cannot create a consistent method resolution order)
+- Missing `get_project_language` and `set_project_language` methods
+- JSON parsing failure in `languages.json` (trailing commas)
+- Controller instantiation error in `NewProjectDialog`
+- Controller instantiation error in `PreferencesDialog`
+- Missing `table_context_menu.py` file
