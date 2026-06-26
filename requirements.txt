@@ -1,2 +1,4 @@
+# ZPL 核心依赖
 PySide6>=6.5.0
-pywin32>=306
+pywin32>=303
+psutil>=5.9.0
