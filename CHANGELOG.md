@@ -298,3 +298,39 @@ In-use detection → Warning dialog → Confirmation dialog (name input + checkb
 - Confusing messages like "process unexpectedly exited" during project creation
 - AttributeError calling deprecated set_zotero_version on first launch
 
+# [0.1.6-beta] - 2026-06-26
+
+## Added
+- CLI command-line entry support
+  - `--fix`: Execute launch repair (rebuild Profile registration)
+  - `--rebuild-shortcuts`: Execute shortcut repair
+  - `--help`: Display help information
+- GUI Project Repair menu (Help → Project Repair)
+  - Repair Launch: Rebuild Profile registration to fix double-click launch issues
+  - Repair Shortcut: Generate .lnk files for projects missing shortcuts
+- `src/cli/` command-line toolkit (moved from `scripts/`)
+- Automatically opens output folder after packaging
+- Displays processed project count during repair
+- Force-includes `sqlite3`, `dataclasses`, `json` and other standard libraries during packaging
+
+## Changed
+- `scripts/` directory moved to `src/cli/` for unified package structure
+- Repair tool core logic migrated to `utils/repair_utils.py` and `utils/repair_shortcut_utils.py`
+- `gen_init.py` now auto-maintains `src/cli`
+- `build.bat` uses `dist\ZoteroProjectLauncher` as source for entire folder packaging
+- `main.py` enhanced with `setup_path()` for path compatibility
+- `status_bar_widget.update_info()` directly uses passed status text, removing redundant prefix
+- Preferences dialog labels changed to instance variables to ensure text display
+
+## Fixed
+- Status bar duplicate "Zotero Zotero detected"
+- `languages.json` not loading after packaging (English display)
+- Missing label text in Preferences dialog
+- Interface not refreshing after first launch
+- `ModuleNotFoundError: No module named 'json'` after packaging
+- `ModuleNotFoundError: No module named 'dataclasses'` after packaging
+- `ModuleNotFoundError: No module named 'sqlite3'` after packaging
+- Item count displaying "?" after packaging
+- Icon attribute error in `directory_bar.py` (`SP_DialogApplyButton`)
+- `fix_profiles.py` import path error
+- `src/cli/` module import path issues
