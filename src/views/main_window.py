@@ -22,7 +22,9 @@ from views.menus import MainMenu
 from views.dialogs import (
     FirstLaunchDialog,
     PreferencesDialog,
-    AboutDialog
+    AboutDialog,
+    RepairLaunchDialog,       # 新增
+    RepairShortcutDialog,     # 新增
 )
 
 
@@ -106,6 +108,10 @@ class MainWindow(QMainWindow):
         self.menu.preferences_triggered.connect(self._on_preferences)
         self.menu.about_triggered.connect(self._on_about)
 
+        # 新增：项目修复信号
+        self.menu.repair_launch_triggered.connect(self._on_repair_launch)
+        self.menu.repair_shortcut_triggered.connect(self._on_repair_shortcut)
+
     def retranslate_ui(self):
         self.setWindowTitle(f"{APP_NAME} {APP_VERSION}")
         self.toolbar.retranslate_ui()
@@ -152,8 +158,8 @@ class MainWindow(QMainWindow):
             self.current_dir = cfg["profiles_current"]
             self.directory_bar.set_current_dir(self.current_dir)
             self.config_mgr.add_to_history(self.current_dir)
-            # 更新状态栏
             self._update_status()
+            self.retranslate_ui()
         else:
             QTimer.singleShot(0, self.close)
 
@@ -165,7 +171,6 @@ class MainWindow(QMainWindow):
             self.project_handler.on_refresh()
         else:
             self.table.setRowCount(0)
-        # 更新状态栏（包括 Zotero 检测状态）
         self._update_status()
 
     def _update_status(self):
@@ -173,7 +178,6 @@ class MainWindow(QMainWindow):
         profiles = self.table.profiles if hasattr(self.table, 'profiles') else []
         count = len(profiles)
 
-        # 检测 Zotero 是否可用
         install_dir = self.config_mgr.get_zotero_install_dir()
         if install_dir and is_valid_directory(install_dir):
             exe_path = Path(install_dir) / "zotero.exe"
@@ -224,6 +228,15 @@ class MainWindow(QMainWindow):
 
     def _on_about(self):
         dialog = AboutDialog(self.i18n, self)
+        dialog.exec_()
+
+    # ===== 新增：项目修复方法 =====
+    def _on_repair_launch(self):
+        dialog = RepairLaunchDialog(self.i18n, self.config_mgr, self)
+        dialog.exec_()
+
+    def _on_repair_shortcut(self):
+        dialog = RepairShortcutDialog(self.i18n, self.config_mgr, self)
         dialog.exec_()
 
     def closeEvent(self, event):

@@ -8,8 +8,30 @@ import os
 import traceback
 from pathlib import Path
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# ===== 添加模块路径（兼容源码运行和 PyInstaller 打包）=====
+def setup_path():
+    """将项目源码目录添加到 Python 路径，并确保标准库可访问"""
+    if getattr(sys, 'frozen', False):
+        # PyInstaller 打包运行
+        meipass = Path(sys._MEIPASS)
+        # 添加 src 目录
+        src_path = meipass / "src"
+        if src_path.exists() and str(src_path) not in sys.path:
+            sys.path.insert(0, str(src_path))
+        # 确保 base_library.zip 在路径中（包含标准库）
+        base_lib = meipass / "base_library.zip"
+        if base_lib.exists() and str(base_lib) not in sys.path:
+            # 放在 sys.path 的末尾，但确保它在 src 之后
+            sys.path.append(str(base_lib))
+    else:
+        # 源码运行
+        src_path = Path(__file__).parent
+        if str(src_path) not in sys.path:
+            sys.path.insert(0, str(src_path))
 
+setup_path()
+
+# 导入 PySide6
 from PySide6.QtWidgets import QApplication, QMessageBox
 from PySide6.QtCore import Qt
 

@@ -3,7 +3,7 @@
 主菜单组件
 """
 
-from PySide6.QtWidgets import QMenuBar
+from PySide6.QtWidgets import QMenuBar, QMenu
 from PySide6.QtGui import QAction, QKeySequence
 from PySide6.QtCore import Signal
 
@@ -20,12 +20,14 @@ class MainMenu(QMenuBar):
     exit_triggered = Signal()
 
     # 编辑菜单
-    rename_triggered = Signal()  # 新增
+    rename_triggered = Signal()
     delete_triggered = Signal()
     preferences_triggered = Signal()
 
     # 帮助菜单
     about_triggered = Signal()
+    repair_launch_triggered = Signal()      # 新增：启动修复
+    repair_shortcut_triggered = Signal()    # 新增：快捷方式修复
 
     def __init__(self, i18n: I18n, parent=None):
         super().__init__(parent)
@@ -74,8 +76,6 @@ class MainMenu(QMenuBar):
 
         # 编辑菜单
         self.edit_menu = self.addMenu("")
-
-        # 重命名项目（新增）
         self.rename_action = QAction("", self)
         self.rename_action.setShortcut(QKeySequence("F2"))
         self.rename_action.triggered.connect(self.rename_triggered.emit)
@@ -97,6 +97,21 @@ class MainMenu(QMenuBar):
 
         # 帮助菜单
         self.help_menu = self.addMenu("")
+
+        # 项目修复子菜单
+        self.repair_menu = QMenu("", self.help_menu)
+        self.help_menu.addMenu(self.repair_menu)
+
+        self.repair_launch_action = QAction("", self.repair_menu)
+        self.repair_launch_action.triggered.connect(self.repair_launch_triggered.emit)
+        self.repair_menu.addAction(self.repair_launch_action)
+
+        self.repair_shortcut_action = QAction("", self.repair_menu)
+        self.repair_shortcut_action.triggered.connect(self.repair_shortcut_triggered.emit)
+        self.repair_menu.addAction(self.repair_shortcut_action)
+
+        self.help_menu.addSeparator()
+
         self.about_action = QAction("", self)
         self.about_action.triggered.connect(self.about_triggered.emit)
         self.help_menu.addAction(self.about_action)
@@ -111,9 +126,12 @@ class MainMenu(QMenuBar):
         self.exit_action.setText(self.i18n.tr("menu_exit"))
 
         self.edit_menu.setTitle(self.i18n.tr("menu_edit"))
-        self.rename_action.setText(self.i18n.tr("menu_rename"))  # 新增
+        self.rename_action.setText(self.i18n.tr("menu_rename"))
         self.delete_action.setText(self.i18n.tr("menu_delete"))
         self.pref_action.setText(self.i18n.tr("menu_preferences"))
 
         self.help_menu.setTitle(self.i18n.tr("menu_help"))
+        self.repair_menu.setTitle(self.i18n.tr("menu_repair"))
+        self.repair_launch_action.setText(self.i18n.tr("menu_repair_launch"))
+        self.repair_shortcut_action.setText(self.i18n.tr("menu_repair_shortcut"))
         self.about_action.setText(self.i18n.tr("menu_about"))

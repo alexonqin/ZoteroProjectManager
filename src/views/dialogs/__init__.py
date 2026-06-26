@@ -14,6 +14,8 @@ from .new_project_dialog import NewProjectDialog
 from .preferences_dialog import PreferencesDialog
 from .project_in_use_dialog import ProjectInUseDialog
 from .rename_dialog import RenameDialog
+from .repair_dialog import RepairLaunchDialog
+from .repair_shortcut_dialog import RepairShortcutDialog
 from .table_context_menu import TableContextMenu
 
-__all__ = ['AboutDialog', 'CreationProgressDialog', 'DeleteConfirmDialog', 'DeleteFailedDialog', 'DeleteSuccessDialog', 'ExportDialog', 'FirstLaunchDialog', 'ImportDialog', 'LanguageDialog', 'NewProjectDialog', 'PreferencesDialog', 'ProjectInUseDialog', 'RenameDialog', 'TableContextMenu']
+__all__ = ['AboutDialog', 'CreationProgressDialog', 'DeleteConfirmDialog', 'DeleteFailedDialog', 'DeleteSuccessDialog', 'ExportDialog', 'FirstLaunchDialog', 'ImportDialog', 'LanguageDialog', 'NewProjectDialog', 'PreferencesDialog', 'ProjectInUseDialog', 'RenameDialog', 'RepairLaunchDialog', 'RepairShortcutDialog', 'TableContextMenu']

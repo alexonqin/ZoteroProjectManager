@@ -9,7 +9,7 @@ from typing import List, Dict
 
 APP_NAME = "Zotero Project Launcher"
 APP_ABBR = "ZPL"
-APP_VERSION = "v0.1.5-beta"
+APP_VERSION = "v0.1.6-beta"
 APP_COPYRIGHT = "© 2026 alexonqin"
 APP_LICENSE = "MIT License"
 APP_REPO_URL = "https://github.com/alexonqin/ZoteroProjectLauncher"

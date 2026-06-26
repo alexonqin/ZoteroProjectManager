@@ -24,13 +24,14 @@ STANDARD_PACKAGES = [
     "src/controllers",
     "src/models",
     "src/utils",
+    "src/cli",           # ← 新增：CLI 工具包
 ]
 
 ROOT_PACKAGES = [
     "src/views",
 ]
 
-# 新增：需要生成组合控制器的包
+# 需要生成组合控制器的包
 CONTROLLER_PACKAGES = [
     "src/controllers",   # 将生成 ZoteroController
 ]
@@ -88,7 +89,9 @@ def generate_simple_init(target_dir: Path, dry_run: bool, backup: bool) -> bool:
 
     py_files = [f.stem for f in target.glob("*.py") if f.name != "__init__.py"]
     if not py_files:
-        return False
+        # 如果没有 .py 文件，生成一个空的 __init__.py（仅标记为包）
+        content = "# Auto-generated __init__.py\n# 该文件由 gen_init.py 自动生成，请勿手动编辑\n\n__all__ = []"
+        return _write_file(target / "__init__.py", content, dry_run, backup)
 
     all_names = []
     import_lines = []
@@ -100,7 +103,9 @@ def generate_simple_init(target_dir: Path, dry_run: bool, backup: bool) -> bool:
             all_names.extend(defs)
 
     if not import_lines:
-        return False
+        # 有 .py 文件但无公开符号，生成空 __init__.py
+        content = "# Auto-generated __init__.py\n# 该文件由 gen_init.py 自动生成，请勿手动编辑\n\n__all__ = []"
+        return _write_file(target / "__init__.py", content, dry_run, backup)
 
     content = _build_content(import_lines, all_names)
     return _write_file(target / "__init__.py", content, dry_run, backup)
@@ -211,7 +216,7 @@ def _write_file(path: Path, content: str, dry_run: bool, backup: bool) -> bool:
 
 
 # ============================================================
-# 新增：控制器组合类生成
+# 控制器组合类生成
 # ============================================================
 def generate_controller_init(target_dir: Path, dry_run: bool, backup: bool) -> bool:
     target = Path(target_dir)
@@ -264,6 +269,7 @@ def generate_controller_init(target_dir: Path, dry_run: bool, backup: bool) -> b
     content = "\n".join(content_lines)
     return _write_file(target / "__init__.py", content, dry_run, backup)
 
+
 def _find_module_for_class(target_dir: Path, class_name: str) -> Optional[str]:
     """在目标目录下查找定义指定类的模块名（不含扩展名）"""
     for py_file in target_dir.glob("*.py"):
@@ -283,11 +289,10 @@ def _find_module_for_class(target_dir: Path, class_name: str) -> Optional[str]:
 def _class_to_snake(name: str) -> str:
     """将 CamelCase 转换为 snake_case"""
     s = re.sub(r'(?<!^)(?=[A-Z])', '_', name).lower()
-    # 去除后缀 _mixin
     if s.endswith('_mixin'):
-        s = s[:-6]  # 移除 _mixin
+        s = s[:-6]
     elif s.endswith('_controller'):
-        s = s[:-11]  # 移除 _controller
+        s = s[:-11]
     return s
 
 

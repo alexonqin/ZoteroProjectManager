@@ -4,6 +4,7 @@
 """
 
 import json
+import sys
 from pathlib import Path
 from typing import Dict
 
@@ -22,15 +23,44 @@ class I18n:
         return cls._instance
 
     def _load_translations(self):
-        json_path = Path(__file__).parent.parent / "resources" / "languages.json"
-        if json_path.exists():
+        """加载翻译文件，兼容源码运行和 PyInstaller 打包"""
+        # 尝试从正常路径加载
+        json_path = self._get_resource_path()
+
+        if json_path and json_path.exists():
             try:
                 with open(json_path, "r", encoding="utf-8") as f:
                     self._translations = json.load(f)
                 return
             except Exception:
                 pass
+
+        # 如果加载失败，使用默认翻译
         self._translations = self._get_default_translations()
+
+    def _get_resource_path(self) -> Path:
+        """
+        获取 languages.json 的路径，兼容源码运行和 PyInstaller 打包。
+        """
+        # 1. 源码运行：src/resources/languages.json
+        src_dir = Path(__file__).parent.parent  # src
+        json_path = src_dir / "resources" / "languages.json"
+        if json_path.exists():
+            return json_path
+
+        # 2. PyInstaller 打包：sys._MEIPASS/src/resources/languages.json
+        if getattr(sys, 'frozen', False):
+            base_dir = Path(sys._MEIPASS) / "src"
+            json_path = base_dir / "resources" / "languages.json"
+            if json_path.exists():
+                return json_path
+
+        # 3. 尝试从项目根目录加载（兼容）
+        json_path = Path(__file__).parent.parent.parent / "resources" / "languages.json"
+        if json_path.exists():
+            return json_path
+
+        return None
 
     def set_language(self, lang_code: str):
         if lang_code in self._translations:

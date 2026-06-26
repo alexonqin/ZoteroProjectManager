@@ -86,14 +86,37 @@ class ProjectHandler:
         self._update_status_bar(profiles)
 
     def on_launch_project(self, profile):
+        # ===== 调试日志开始 =====
+        print("=" * 60)
+        print("[DEBUG] on_launch_project 被调用")
+        print(f"[DEBUG] profile 类型 = {type(profile)}")
+        if isinstance(profile, Profile):
+            print(f"[DEBUG] profile.name = '{profile.name}'")
+            print(f"[DEBUG] profile.name 长度 = {len(profile.name)}")
+            print(f"[DEBUG] profile.name 的 repr = {repr(profile.name)}")
+            print(f"[DEBUG] profile.project_path = '{profile.project_path}'")
+        else:
+            print(f"[DEBUG] profile 不是 Profile 对象: {profile}")
+        print("=" * 60)
+
         if not isinstance(profile, Profile):
             QMessageBox.warning(self.parent, "错误", "无法启动项目：所选项目无效。")
             return
+
         if not self.config.zotero_install_dir:
             QMessageBox.warning(self.parent, "", "请设置 Zotero 安装路径")
             return
-        if not self.controller.launch_project(profile.project_path, profile.name, self.config.zotero_install_dir):
+
+        # 清理名称中的不可见字符
+        clean_name = profile.name.strip()
+        if clean_name != profile.name:
+            print(f"[DEBUG] 注意: profile.name 被清理，新值 = '{clean_name}'")
+            # 注意：这里只是清理用于启动的名称，不修改原始 profile 对象
+
+        print(f"[DEBUG] 调用 controller.launch_project with project_name='{clean_name}'")
+        if not self.controller.launch_project(profile.project_path, clean_name, self.config.zotero_install_dir):
             QMessageBox.warning(self.parent, "", "启动失败")
+
 
     def on_delete_project(self, profile: Profile):
         if self.controller.is_project_in_use(profile.project_path):
