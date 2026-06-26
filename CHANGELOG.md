@@ -334,3 +334,35 @@ In-use detection → Warning dialog → Confirmation dialog (name input + checkb
 - Icon attribute error in `directory_bar.py` (`SP_DialogApplyButton`)
 - `fix_profiles.py` import path error
 - `src/cli/` module import path issues
+
+
+# [0.1.7-beta] - 2026-06-27
+
+## Added
+- Project officially renamed to **Zotero Project Manager (ZPM)**
+  - `APP_NAME` updated to "Zotero Project Manager"
+  - `APP_ABBR` updated to "ZPM"
+  - All documentation and code updated accordingly
+- `build.bat` automatically reads version info from `config.py` (`APP_NAME`, `APP_ABBR`, `APP_VERSION`)
+- `build.bat` automatically opens output folder after packaging
+- `requirements.txt` added `psutil>=5.9.0` as explicit dependency
+
+## Changed
+- `README.md` completely rewritten
+  - Core value statement placed first: "ZPM turns Zotero from 'one database' into 'multiple independent project folders'"
+  - New "What is ZPM" section with account mode vs project isolation mode comparison
+  - Chinese and English versions fully aligned
+- `build.bat` uses space-free project name (`APP_NAME_NO_SPACE`) for EXE and ZIP generation
+- `import_dialog.py` checkbox state judgment changed from `state == Qt.Checked` to `state == 2`
+- `import_dialog.py` added `original_project_name` attribute to store original project name from ZIP
+
+## Fixed
+- Fixed import rename functionality
+  - Folder not actually being renamed when rename checkbox was checked
+  - Import rename overwriting existing projects (now uses temporary directory for complete isolation)
+- Fixed shortcut generation failure after packaging (missing `pywin32` modules)
+  - Added `--hidden-import win32com`, `--hidden-import win32com.client`, etc.
+  - Added `--collect-all pywin32`
+
+## Removed
+- `README.md` removed outdated descriptions such as template management and multi-library support
