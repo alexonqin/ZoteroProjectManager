@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-gen_init.py - ZPL 项目 __init__.py 自动生成器
+gen_init.py - ZPM 项目 __init__.py 自动生成器
 
 用法：
     python gen_init.py               # 正常生成
@@ -301,7 +301,7 @@ def _class_to_snake(name: str) -> str:
 # ============================================================
 
 def main():
-    parser = argparse.ArgumentParser(description="生成 ZPL 项目 __init__.py")
+    parser = argparse.ArgumentParser(description="生成 ZPM 项目 __init__.py")
     parser.add_argument("--dry-run", action="store_true", help="预览模式")
     parser.add_argument("--no-backup", action="store_true", help="不备份")
     args = parser.parse_args()
@@ -311,7 +311,7 @@ def main():
     dry_run = args.dry_run
 
     print("=" * 60)
-    print("  ZPL __init__.py 生成器")
+    print("  ZPM __init__.py 生成器")
     print("=" * 60)
     print(f"  模式: {'预览' if dry_run else '生成'}")
     print("-" * 60)

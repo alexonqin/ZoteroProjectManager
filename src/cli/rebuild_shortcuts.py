@@ -3,7 +3,7 @@
 """
 为项目库中缺失快捷方式的项目自动生成 .lnk 文件（CLI）。
 用法：python -m src.cli.rebuild_shortcuts [项目库目录]
-如果未指定，则从 ~/.zpl_config.json 读取。
+如果未指定，则从 ~/.ZPM_config.json 读取。
 仅当项目对应快捷方式不存在时才会生成，已存在则跳过。
 """
 
@@ -15,25 +15,25 @@ from pathlib import Path
 from ..utils.config_manager import ConfigManager
 from ..controllers import ZoteroController
 
-ZPL_CONFIG_PATH = Path.home() / ".zpl_config.json"
+ZPM_CONFIG_PATH = Path.home() / ".ZPM_config.json"
 
 
 def get_projects_dir_from_config():
-    """从 ZPL 配置文件获取项目库目录"""
-    if ZPL_CONFIG_PATH.exists():
+    """从 ZPM 配置文件获取项目库目录"""
+    if ZPM_CONFIG_PATH.exists():
         try:
-            with open(ZPL_CONFIG_PATH, 'r', encoding='utf-8') as f:
+            with open(ZPM_CONFIG_PATH, 'r', encoding='utf-8') as f:
                 config = json.load(f)
             profiles_current = config.get("profiles_current")
             if profiles_current:
                 return Path(profiles_current)
         except Exception as e:
-            print(f"⚠️ 读取 ZPL 配置文件失败: {e}")
+            print(f"⚠️ 读取 ZPM 配置文件失败: {e}")
     return None
 
 
 def get_projects_dir():
-    """从命令行参数或 ZPL 配置文件获取项目库目录"""
+    """从命令行参数或 ZPM 配置文件获取项目库目录"""
     if len(sys.argv) > 1:
         return Path(sys.argv[1])
 
@@ -41,7 +41,7 @@ def get_projects_dir():
     if config_path:
         return config_path
 
-    print("⚠️ 未在 ZPL 配置中找到项目库目录。")
+    print("⚠️ 未在 ZPM 配置中找到项目库目录。")
     user_input = input("请输入项目库目录路径（或按 Enter 退出）: ").strip()
     if not user_input:
         sys.exit(0)
@@ -62,7 +62,7 @@ def main():
     # 检查 Zotero 安装路径是否有效
     zotero_dir = config_mgr.get_zotero_install_dir()
     if not zotero_dir or not Path(zotero_dir).exists():
-        print("❌ 错误：Zotero 安装路径无效，请在 ZPL 偏好设置中先设置。")
+        print("❌ 错误：Zotero 安装路径无效，请在 ZPM 偏好设置中先设置。")
         sys.exit(1)
 
     # 查找所有有效项目（包含 profiles 子目录）

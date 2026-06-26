@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Zotero Project Launcher (ZPL) - 程序入口
+Zotero Project Launcher (ZPM) - 程序入口
 """
 
 import sys
@@ -63,7 +63,7 @@ def main():
 
     app = QApplication(sys.argv)
     app.setApplicationName("Zotero Project Launcher")
-    app.setOrganizationName("ZPL")
+    app.setOrganizationName("ZPM")
     app.setApplicationVersion("1.0.0")
 
     setup_exception_hook()

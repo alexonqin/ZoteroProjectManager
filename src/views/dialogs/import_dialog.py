@@ -28,6 +28,7 @@ class ImportDialog(QDialog):
         self.result_path = None          # 目标路径
         self.result_rename = False       # 是否重命名
         self.result_new_name = ""        # 新名称
+        self.original_project_name = None  # ZIP 内的原项目名称（用于重命名时）
 
         self._zip_info = None
         self._setup_ui()
@@ -150,6 +151,7 @@ class ImportDialog(QDialog):
                     QMessageBox.warning(self, "", self.i18n.tr("import_error_invalid"))
                     self.name_edit.setText("")
                     self.import_btn.setEnabled(False)
+                    self.original_project_name = None
                     return
 
                 project_folder = next(iter(top_level))
@@ -161,22 +163,32 @@ class ImportDialog(QDialog):
                     QMessageBox.warning(self, "", self.i18n.tr("import_error_invalid"))
                     self.name_edit.setText("")
                     self.import_btn.setEnabled(False)
+                    self.original_project_name = None
                     return
 
-                # 保存项目信息
-                self._zip_info = {
-                    'project_name': project_folder,
-                }
+                # 保存原项目名称
+                self.original_project_name = project_folder
+                self._zip_info = {'project_name': project_folder}
 
                 self.name_edit.setText(project_folder)
                 self.import_btn.setEnabled(True)
 
+                # 根据复选框状态设置输入框只读
+                if self.rename_cb.isChecked():
+                    self.name_edit.setReadOnly(False)
+                    self.name_edit.setStyleSheet("background-color: white;")
+                else:
+                    self.name_edit.setReadOnly(True)
+                    self.name_edit.setStyleSheet("background-color: #f5f5f5;")
+
         except zipfile.BadZipFile:
             QMessageBox.warning(self, "", self.i18n.tr("import_error_invalid"))
             self.import_btn.setEnabled(False)
+            self.original_project_name = None
 
     def _on_rename_toggle(self, state):
-        if state == Qt.Checked:
+        # 勾选状态：state == 2 表示勾选，0 表示取消
+        if state == 2:
             self.name_edit.setReadOnly(False)
             self.name_edit.setStyleSheet("background-color: white;")
             self.name_edit.setFocus()
@@ -184,7 +196,6 @@ class ImportDialog(QDialog):
         else:
             self.name_edit.setReadOnly(True)
             self.name_edit.setStyleSheet("background-color: #f5f5f5;")
-            # 恢复原名称
             if self._zip_info:
                 self.name_edit.setText(self._zip_info['project_name'])
 
@@ -202,7 +213,6 @@ class ImportDialog(QDialog):
 
         # 检测冲突
         if target_path.exists():
-            # 弹出冲突处理对话框
             reply = QMessageBox.question(
                 self,
                 self.i18n.tr("import_conflict_title"),
@@ -212,7 +222,6 @@ class ImportDialog(QDialog):
             )
             if reply == QMessageBox.Cancel:
                 return
-            # 用户选择 Yes = 自动重命名
             counter = 1
             new_name = f"{project_name}_{counter}"
             while (Path(self.default_dir) / new_name).exists():
@@ -220,7 +229,6 @@ class ImportDialog(QDialog):
                 new_name = f"{project_name}_{counter}"
             project_name = new_name
             target_path = Path(self.default_dir) / project_name
-            # 更新界面上的名称
             self.name_edit.setText(project_name)
 
         self.result_path = str(target_path)

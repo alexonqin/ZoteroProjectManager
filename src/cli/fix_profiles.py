@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-ZPL 项目 Profile 修复脚本（CLI）
+ZPM 项目 Profile 修复脚本（CLI）
 用法：python -m src.cli.fix_profiles [项目库目录]
-如果未指定项目库目录，则从 ~/.zpl_config.json 读取当前项目库路径。
+如果未指定项目库目录，则从 ~/.ZPM_config.json 读取当前项目库路径。
 """
 
 import configparser
@@ -17,25 +17,25 @@ from pathlib import Path
 from ..utils.profile_registry import register_profile, get_profiles_ini_path
 from ..utils.config_manager import ConfigManager
 
-ZPL_CONFIG_PATH = Path.home() / ".zpl_config.json"
+ZPM_CONFIG_PATH = Path.home() / ".ZPM_config.json"
 
 
 def get_projects_dir_from_config():
-    """从 ZPL 配置文件获取项目库目录"""
-    if ZPL_CONFIG_PATH.exists():
+    """从 ZPM 配置文件获取项目库目录"""
+    if ZPM_CONFIG_PATH.exists():
         try:
-            with open(ZPL_CONFIG_PATH, 'r', encoding='utf-8') as f:
+            with open(ZPM_CONFIG_PATH, 'r', encoding='utf-8') as f:
                 config = json.load(f)
             profiles_current = config.get("profiles_current")
             if profiles_current:
                 return Path(profiles_current)
         except Exception as e:
-            print(f"⚠️ 读取 ZPL 配置文件失败: {e}")
+            print(f"⚠️ 读取 ZPM 配置文件失败: {e}")
     return None
 
 
 def get_projects_dir():
-    """从命令行参数或 ZPL 配置文件获取项目库目录"""
+    """从命令行参数或 ZPM 配置文件获取项目库目录"""
     if len(sys.argv) > 1:
         return Path(sys.argv[1])
 
@@ -43,7 +43,7 @@ def get_projects_dir():
     if config_path:
         return config_path
 
-    print("⚠️ 未在 ZPL 配置中找到项目库目录。")
+    print("⚠️ 未在 ZPM 配置中找到项目库目录。")
     user_input = input("请输入项目库目录路径（或按 Enter 退出）: ").strip()
     if not user_input:
         sys.exit(0)
@@ -119,7 +119,7 @@ def main():
             print(f"  ❌ 注册失败: {project_path.name}")
 
     print(f"\n🎉 修复完成！成功注册 {success_count} 个项目")
-    print("💡 请重启 ZPL，然后双击项目测试启动。")
+    print("💡 请重启 ZPM，然后双击项目测试启动。")
     print(f"💡 如出现问题，可从备份恢复: {backup_path}")
 
 

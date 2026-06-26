@@ -54,7 +54,6 @@ class ProjectHandler:
         if dialog.exec_() == QDialog.Accepted and dialog.result_data:
             name, location = dialog.result_data
 
-            # 执行创建（不等待，立即返回）
             success, msg, project_path = self.controller.create_project(
                 project_name=name,
                 profiles_dir=location,
@@ -63,13 +62,10 @@ class ProjectHandler:
             )
 
             if success:
-                # 无论是否初始化完成，都显示倒计时对话框
                 from views.dialogs.creation_progress_dialog import CreationProgressDialog
                 progress_dialog = CreationProgressDialog(self.i18n, name, self.parent)
-                # 执行 exec_() 会阻塞，直到用户点击 OK（120秒后）
                 progress_dialog.exec_()
 
-                # 用户点击 OK 后，刷新界面
                 self.config_mgr.set_profiles_current(location)
                 self.config_mgr.add_to_history(location)
                 self.on_refresh()
@@ -86,37 +82,16 @@ class ProjectHandler:
         self._update_status_bar(profiles)
 
     def on_launch_project(self, profile):
-        # ===== 调试日志开始 =====
-        print("=" * 60)
-        print("[DEBUG] on_launch_project 被调用")
-        print(f"[DEBUG] profile 类型 = {type(profile)}")
-        if isinstance(profile, Profile):
-            print(f"[DEBUG] profile.name = '{profile.name}'")
-            print(f"[DEBUG] profile.name 长度 = {len(profile.name)}")
-            print(f"[DEBUG] profile.name 的 repr = {repr(profile.name)}")
-            print(f"[DEBUG] profile.project_path = '{profile.project_path}'")
-        else:
-            print(f"[DEBUG] profile 不是 Profile 对象: {profile}")
-        print("=" * 60)
-
         if not isinstance(profile, Profile):
             QMessageBox.warning(self.parent, "错误", "无法启动项目：所选项目无效。")
             return
-
         if not self.config.zotero_install_dir:
             QMessageBox.warning(self.parent, "", "请设置 Zotero 安装路径")
             return
 
-        # 清理名称中的不可见字符
         clean_name = profile.name.strip()
-        if clean_name != profile.name:
-            print(f"[DEBUG] 注意: profile.name 被清理，新值 = '{clean_name}'")
-            # 注意：这里只是清理用于启动的名称，不修改原始 profile 对象
-
-        print(f"[DEBUG] 调用 controller.launch_project with project_name='{clean_name}'")
         if not self.controller.launch_project(profile.project_path, clean_name, self.config.zotero_install_dir):
             QMessageBox.warning(self.parent, "", "启动失败")
-
 
     def on_delete_project(self, profile: Profile):
         if self.controller.is_project_in_use(profile.project_path):
@@ -205,7 +180,6 @@ class ProjectHandler:
                 os.startfile(Path(zip_path).parent)
 
     def _do_export(self, profile: Profile, zip_path: str):
-        """导出全部文件，无排除"""
         try:
             progress = QProgressDialog(
                 self.i18n.tr("export_progress"),
@@ -235,15 +209,19 @@ class ProjectHandler:
                 self.i18n.tr("export_failed").format(error=str(e))
             )
 
+    # ---------- 导入（核心修复） ----------
     def on_import_project(self):
         current_dir = self.config_mgr.get_profiles_current()
         dialog = ImportDialog(self.i18n, current_dir, self.parent)
         if dialog.exec_() == QDialog.Accepted:
             zip_path = dialog.file_edit.text()
             target_path = dialog.result_path
-            self._do_import(zip_path, target_path)
+            self._do_import(zip_path, target_path, dialog.original_project_name)
 
-    def _do_import(self, zip_path: str, target_path: str):
+    def _do_import(self, zip_path: str, target_path: str, original_name: str = None):
+        """
+        执行导入，支持重命名文件夹（使用临时目录，避免覆盖现有项目）
+        """
         try:
             progress = QProgressDialog(
                 self.i18n.tr("import_progress"),
@@ -256,16 +234,58 @@ class ProjectHandler:
             target_dir = Path(target_path).parent
             target_dir.mkdir(parents=True, exist_ok=True)
 
-            with zipfile.ZipFile(zip_path, 'r') as zf:
-                zf.extractall(target_dir)
+            # 创建临时目录
+            temp_dir = target_dir / "_tmp_import"
+            if temp_dir.exists():
+                shutil.rmtree(temp_dir)
+            temp_dir.mkdir()
 
-            project_name = Path(target_path).name
-            profiles_subdir = Path(target_path) / "profiles"
+            # 解压 ZIP 到临时目录
+            with zipfile.ZipFile(zip_path, 'r') as zf:
+                zf.extractall(temp_dir)
+
+            # 确定解压出的项目文件夹（通常为 original_name）
+            # 如果 original_name 为 None，尝试从临时目录中查找第一个子目录
+            if original_name:
+                unpacked_path = temp_dir / original_name
+            else:
+                # 若没有 original_name，则尝试获取临时目录下的第一个子目录
+                items = list(temp_dir.iterdir())
+                if not items:
+                    raise Exception("ZIP 包为空或结构异常")
+                unpacked_path = items[0] if items[0].is_dir() else temp_dir
+
+            if not unpacked_path.exists() or not unpacked_path.is_dir():
+                raise Exception(f"解压后未找到项目文件夹: {unpacked_path}")
+
+            final_name = Path(target_path).name
+            final_path = target_dir / final_name
+
+            # 如果最终路径已存在，说明冲突处理未生效，抛出异常
+            if final_path.exists():
+                raise Exception(f"目标路径已存在: {final_path}")
+
+            # 重命名/移动项目文件夹到最终位置
+            if unpacked_path.name != final_name:
+                # 重命名临时目录内的文件夹
+                unpacked_path.rename(final_path)
+            else:
+                # 直接移动（不重命名）
+                unpacked_path.rename(final_path)  # 或 shutil.move
+
+            # 清理临时目录（如果为空则删除，否则递归删除）
+            try:
+                temp_dir.rmdir()
+            except OSError:
+                shutil.rmtree(temp_dir, ignore_errors=True)
+
+            # 注册 Profile 和生成快捷方式
+            project_name = final_path.name
+            profiles_subdir = final_path / "profiles"
             register_profile(project_name, str(profiles_subdir))
 
-            # 自动生成项目库快捷方式
             self.controller.create_shortcut_in_library(
-                str(target_path),
+                str(final_path),
                 project_name,
                 self.config.zotero_install_dir,
                 str(target_dir)
@@ -278,7 +298,12 @@ class ProjectHandler:
                 self.i18n.tr("import_success").format(name=project_name)
             )
             self.on_refresh()
+
         except Exception as e:
+            # 清理临时目录
+            temp_dir = target_dir / "_tmp_import"
+            if temp_dir.exists():
+                shutil.rmtree(temp_dir, ignore_errors=True)
             QMessageBox.critical(
                 self.parent,
                 "",

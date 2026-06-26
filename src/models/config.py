@@ -7,13 +7,13 @@ from dataclasses import dataclass, field
 from typing import List, Dict
 
 
-APP_NAME = "Zotero Project Launcher"
-APP_ABBR = "ZPL"
-APP_VERSION = "v0.1.6-beta"
+APP_NAME = "Zotero Project Manager"
+APP_ABBR = "ZPM"
+APP_VERSION = "v0.1.7-beta"
 APP_COPYRIGHT = "© 2026 alexonqin"
 APP_LICENSE = "MIT License"
-APP_REPO_URL = "https://github.com/alexonqin/ZoteroProjectLauncher"
-APP_ISSUE_URL = "https://github.com/alexonqin/ZoteroProjectLauncher/issues"
+APP_REPO_URL = "https://github.com/alexonqin/ZoteroProjectManager"
+APP_ISSUE_URL = "https://github.com/alexonqin/ZoteroProjectManager/issues"
 
 
 @dataclass
@@ -28,7 +28,7 @@ class AppConfig:
     profiles_default: str = ""
     profiles_history: List[str] = field(default_factory=list)
 
-    # ZPL 界面语言
+    # ZPM 界面语言
     language: str = "zh_CN"
 
     # 窗口设置

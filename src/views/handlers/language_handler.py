@@ -34,7 +34,7 @@ class LanguageHandler:
         self.config = config_mgr.get_config()
     
     def on_switch_language(self):
-        """切换 ZPL 界面语言"""
+        """切换 ZPM 界面语言"""
         current = self.i18n.get_language()
         new_lang = "en_US" if current == "zh_CN" else "zh_CN"
         self.i18n.set_language(new_lang)

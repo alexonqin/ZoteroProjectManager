@@ -11,7 +11,7 @@ from models.config import AppConfig
 
 
 class ConfigManager:
-    CONFIG_FILE_NAME = ".zpl_config.json"
+    CONFIG_FILE_NAME = ".ZPM_config.json"
 
     def __init__(self):
         self.config_path = Path.home() / self.CONFIG_FILE_NAME
@@ -72,7 +72,7 @@ class ConfigManager:
             history = history[:20]
         self.save()
 
-    # ---------- ZPL 界面语言 ----------
+    # ---------- ZPM 界面语言 ----------
     def get_language(self) -> str:
         return self._config.language
 
