@@ -1,222 +1,186 @@
+# Zotero Project Manager (ZPM)
 
-# Zotero Project Launcher (ZPL)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Python 3.7+](https://img.shields.io/badge/python-3.7+-blue.svg)](https://www.python.org/)
+[![Version](https://img.shields.io/badge/version-v0.1.6--beta-orange.svg)](CHANGELOG.md)
+![Platform](https://img.shields.io/badge/platform-Windows-blue.svg)
 
-[English](#english) | [中文](#chinese)
+---
+
+[English](#english) | [中文](#中文)
 
 ---
 
 <a name="english"></a>
 
-## English
+## What is ZPM?
 
-### Overview
+**ZPM turns Zotero from "one database" into "multiple independent project folders."**
 
-A lightweight desktop tool for managing multiple isolated Zotero projects, allowing you to manage Zotero projects like folders. Built with Python and PySide6, it provides a clean graphical interface for creating, launching, and organizing independent Zotero environments.
+Zotero's default mode is account-based — all your references live in one database. Collections are like tags: they group things logically, but they don't physically separate your research topics.
 
-### Features
+ZPM is an enhancement tool for Zotero — it directs Zotero to create an independent configuration and data environment for each project. It's like having a separate Zotero for every research topic.
 
-- **One-click project creation**: Create independent Zotero projects with just a name and location
-- **Complete project isolation**: Each project has its own `data/` and `profiles/` directories
-- **Library shortcuts**: Auto-generate project shortcuts in the project library root directory
-- **Template management**: Support multiple template versions, auto-match with Zotero version
-- **Multi-library support**: Switch between main, test, and temporary project libraries
-- **Bilingual UI**: Support both Simplified Chinese and English with instant switching
-- **Persistent preferences**: Settings saved to `~/.zpl_config.json`
+ZPM displays and manages all your projects in one place. You can quickly create, launch, rename, and import/export (migrate) projects — all in just a few clicks, with no technical knowledge required.
 
-### Installation
+![Screenshot](ZPM_main_window.png)
 
-#### Prerequisites
-- Python 3.7+
-- PySide6
-- pywin32 (Windows only)
+---
 
-#### Steps
+## Features
 
-# Clone the repository
+- **Create projects** with one click
+- **Launch projects** with a double-click — automatically starts the corresponding Zotero instance
+- **Import/Export** complete project packages with full backup support
+- **Rename projects** with automatic sync of all associated resources (folder, registry, shortcuts)
+- **Repair tools** — one-click rebuild Profile registration or shortcuts when launch issues occur
+- **Bilingual UI** — Simplified Chinese and English, switch instantly
+
+---
+
+## Quick Start
+
+### Download exe (Recommended)
+
+1. Go to the [Releases page](https://github.com/alexonqin/ZoteroProjectManager/releases)
+2. Download the latest `ZoteroProjectManager_vX.X.X-beta_Win64.zip`
+3. Extract and double-click `ZoteroProjectManager.exe`
+4. Follow the setup wizard to configure Zotero path and project library directory
+5. Click "New Project" to get started
+
+> 💡 No Python installation required – just extract and run.
+
+### Run from source (Developers / Advanced users)
+
 ```bash
-git clone https://github.com/alexonqin/ZoteroProjectLauncher.git
-cd ZoteroProjectLauncher
-```
-
-# Install dependencies
-```bash
+git clone https://github.com/alexonqin/ZoteroProjectManager.git
+cd ZoteroProjectManager
 pip install -r requirements.txt
-```
-
-# Run the application
-```bash
 python src/main.py
 ```
 
+### CLI Tools (Advanced users)
 
-### Quick Start
+ZPM includes built-in CLI support for automation or headless environments:
 
-1. **First launch**: Follow the setup wizard to configure:
-   - Zotero version (e.g., `9.0.5`)
-   - Zotero installation directory (e.g., `D:\Program Files\Zotero`)
-   - Template directory (e.g., `D:\ZPL_Templates`)
-   - Project library directory (e.g., `D:\ZoteroLibrary`)
+```bash
+# Execute launch repair
+ZoteroProjectManager.exe --fix
 
-2. **Prepare template**: Create a subfolder named `v{version}/` (e.g., `v9.0.5/`) in the template directory, containing:
-   ```
-   v9.0.5/
-   ├── data/
-   │   └── zotero.sqlite
-   └── profiles/
-       └── prefs.js
-   ```
+# Execute shortcut repair
+ZoteroProjectManager.exe --rebuild-shortcuts
 
-3. **Create project**: Click "New Project", enter a name and location
-
-4. **Launch project**: Double-click the project card, or use the shortcut in the project library directory
-
-### Directory Structure
-
-```
-ZoteroProjectLauncher/
-├── src/
-│   ├── main.py
-│   ├── controllers/
-│   │   └── zotero_controller.py
-│   ├── models/
-│   │   ├── config.py
-│   │   └── profile.py
-│   ├── utils/
-│   │   ├── config_manager.py
-│   │   ├── i18n.py
-│   │   └── path_utils.py
-│   ├── views/
-│   │   ├── main_window.py
-│   │   ├── widgets/
-│   │   │   └── project_card.py
-│   │   └── dialogs/
-│   │       ├── preferences_dialog.py
-│   │       ├── new_project_dialog.py
-│   │       ├── delete_confirm_dialog.py
-│   │       └── first_launch_dialog.py
-│   └── resources/
-│       └── languages.json
-├── requirements.txt
-└── README.md
+# Show help
+ZoteroProjectManager.exe --help
 ```
 
-### Development Status
+---
 
-Currently in **beta** (v0.1). Core functionality is implemented and tested.
+## Status
 
-### License
+Current version: **v0.1.6-beta**
+
+- ✅ Core features stable
+- ✅ Full bilingual UI
+- 🚧 Actively developing – feedback welcome
+
+---
+
+## License
 
 MIT License
 
-### Author
+---
+
+## Author
 
 alexonqin
 
 ---
 
-<a name="chinese"></a>
+---
 
-## 中文
+<a name="中文"></a>
 
-### 概述
+## 这是什么？
 
-一款轻量级的 Zotero 多项目管理工具，让你像管理文件夹一样管理 Zotero 项目。基于 Python 和 PySide6 开发，提供简洁的图形界面，用于创建、启动和组织独立的 Zotero 环境。
+**ZPM 把 Zotero 从“一个数据库”变成“多个独立项目文件夹。”**
 
-### 功能特性
+Zotero 默认是账户模式——所有文献集中在一个数据库中。分类就像给文献打标签，只能逻辑分组，不同课题之间无法做到真正的物理隔离。
 
-- **一键新建项目**：只需输入名称和位置即可创建独立的 Zotero 项目
-- **项目完全隔离**：每个项目拥有独立的 `data/` 和 `profiles/` 目录
-- **项目库快捷方式**：在项目库根目录自动生成项目快捷方式
-- **模板管理**：支持多版本模板，自动匹配用户 Zotero 版本
-- **多项目库支持**：在主库、测试库、临时库之间自由切换
-- **中英文界面**：支持简体中文和 English 即时切换
-- **偏好持久化**：设置保存到 `~/.zpl_config.json`
+ZPM 是 Zotero 的增强工具——它指挥 Zotero，为每个项目单独创建一套独立的配置和数据环境，相当于给每个课题都配了一个“独立的 Zotero”。
 
-### 安装
+ZPM 集中显示并管理所有项目，可快速进行新建、启动、重命名、导入导出（迁移），点几下鼠标就能完成，不需要了解任何技术细节。
 
-#### 依赖
-- Python 3.7+
-- PySide6
-- pywin32 (仅 Windows)
+![主界面截图](ZPM_main_window.png)
 
-#### 安装步骤
+---
 
-# 克隆仓库
+## 它能做什么？
+
+- **新建项目**：一键创建独立的 Zotero 项目
+- **启动项目**：双击项目，自动启动对应的 Zotero 实例
+- **导入/导出**：完整的项目打包迁移，支持完整备份
+- **项目重命名**：自动同步所有关联资源（文件夹、注册信息、快捷方式）
+- **项目修复**：当启动异常时，一键重建 Profile 注册或快捷方式
+- **中英文界面**：即时切换
+
+---
+
+## 快速开始
+
+### 下载 exe（推荐）
+
+1. 访问 [Releases 页面](https://github.com/alexonqin/ZoteroProjectManager/releases)
+2. 下载最新版本的 `ZoteroProjectManager_vX.X.X-beta_Win64.zip`
+3. 解压后双击 `ZoteroProjectManager.exe`
+4. 按照引导设置 Zotero 路径和项目库目录
+5. 点击「新建项目」开始使用
+
+> 💡 无需安装 Python，解压即用。
+
+### 源码运行（开发者/高级用户）
+
 ```bash
-git clone https://github.com/alexonqin/ZoteroProjectLauncher.git
-cd ZoteroProjectLauncher
-```
-
-# 安装依赖
-```bash
+git clone https://github.com/alexonqin/ZoteroProjectManager.git
+cd ZoteroProjectManager
 pip install -r requirements.txt
-```
-
-# 运行程序
-```bash
 python src/main.py
 ```
 
-### 快速开始
+### 命令行工具（高级用户）
 
-1. **首次启动**：按照引导完成以下设置：
-   - Zotero 版本号（如 `9.0.5`）
-   - Zotero 安装目录（如 `D:\Program Files\Zotero`）
-   - 模板目录（如 `D:\ZPL_Templates`）
-   - 项目库目录（如 `D:\ZoteroLibrary`）
+ZPM 内置 CLI 支持，适合自动化或无 GUI 环境：
 
-2. **准备模板**：在模板目录下创建 `v{版本号}/` 子文件夹（如 `v9.0.5/`），包含：
-   ```
-   v9.0.5/
-   ├── data/
-   │   └── zotero.sqlite
-   └── profiles/
-       └── prefs.js
-   ```
+```bash
+# 执行启动修复
+ZoteroProjectManager.exe --fix
 
-3. **新建项目**：点击「新建项目」，输入名称和存放位置
+# 执行快捷方式修复
+ZoteroProjectManager.exe --rebuild-shortcuts
 
-4. **启动项目**：双击项目卡片，或点击项目库目录中的快捷方式
-
-### 目录结构
-
-```
-ZoteroProjectLauncher/
-├── src/
-│   ├── main.py
-│   ├── controllers/
-│   │   └── zotero_controller.py
-│   ├── models/
-│   │   ├── config.py
-│   │   └── profile.py
-│   ├── utils/
-│   │   ├── config_manager.py
-│   │   ├── i18n.py
-│   │   └── path_utils.py
-│   ├── views/
-│   │   ├── main_window.py
-│   │   ├── widgets/
-│   │   │   └── project_card.py
-│   │   └── dialogs/
-│   │       ├── preferences_dialog.py
-│   │       ├── new_project_dialog.py
-│   │       ├── delete_confirm_dialog.py
-│   │       └── first_launch_dialog.py
-│   └── resources/
-│       └── languages.json
-├── requirements.txt
-└── README.md
+# 查看帮助
+ZoteroProjectManager.exe --help
 ```
 
-### 开发状态
+---
 
-当前为 **beta** 版本 (v0.1)，核心功能已实现并完成测试。
+## 项目状态
 
-### 许可证
+当前版本：**v0.1.6-beta**
 
-MIT License
+- ✅ 核心功能稳定
+- ✅ 完整中英文界面
+- 🚧 仍在积极开发中，欢迎反馈
 
-### 作者
+---
+
+## 许可证
+
+本项目采用 [MIT License](LICENSE)。
+
+---
+
+## 作者
 
 alexonqin
-
