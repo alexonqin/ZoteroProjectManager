@@ -73,12 +73,19 @@ ZoteroProjectManager.exe --rebuild-shortcuts
 # Show help
 ZoteroProjectManager.exe --help
 ```
-
 ---
+> [!IMPORTANT]
+> **⚠️ Important: Do Not Sign In to Your Zotero Account**
+>
+> ZPM is a local-only tool. Do not sign in to your Zotero account inside projects created by ZPM. Signing in triggers cloud sync, which breaks ZPM's "local isolation" — each project is an independent folder with its own data, plugins, and preferences.
+>
+> Zotero Account Mode is for cross-device syncing; ZPM Local Mode is for multi-project local management. Use them separately.
+>
+> **ZPM projects stay local. Do not connect them to the cloud.**
 
 ## Status
 
-Current version: **v0.1.6-beta**
+Current version: **v0.1.7-beta**
 
 - ✅ Core features stable
 - ✅ Full bilingual UI
@@ -165,9 +172,18 @@ ZoteroProjectManager.exe --help
 
 ---
 
+> [!IMPORTANT]
+> **⚠️ 重要：请勿登录 Zotero 账户**
+>
+> ZPM 是纯本地工具，请勿在 ZPM 创建的项目中登录 Zotero 账户。登录账户会触发云端同步，破坏 ZPM 的“本地隔离”设计——每个项目都是独立的文件夹，数据、插件、配置互不干扰。
+>
+> Zotero 账户模式用于跨设备同步，ZPM 本地模式用于多课题本地管理，两者独立使用，互不冲突。
+>
+> **ZPM 管理的项目保持本地，不可登录云端。**
+
 ## 项目状态
 
-当前版本：**v0.1.6-beta**
+当前版本：**v0.1.7-beta**
 
 - ✅ 核心功能稳定
 - ✅ 完整中英文界面
